@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI影视导演语言资产库"
+  short_description: "为人工智能漫剧导演提供场景诊断、表演、摄影、动作特效和连续性专业模块"
+  default_prompt: "分析当前剧本场景，返回可供人工智能漫剧导演调用的结构化导演方案，不改写剧情事实和原文台词。"
+policy:
+  allow_implicit_invocation: true

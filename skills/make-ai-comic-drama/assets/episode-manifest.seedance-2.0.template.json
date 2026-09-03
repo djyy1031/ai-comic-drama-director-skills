@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "episode": 1,
+  "model_profile": "seedance-2.0",
+  "planned_final_duration_seconds": 15,
+  "timeline_overhead_seconds": 0,
+  "final_duration_seconds": null,
+  "shot_groups": [
+    {
+      "shot_group_id": "EP001-SG01",
+      "duration_seconds": 15,
+      "duration_exception_reason": null,
+      "scene_name": "填写标准场景名称",
+      "story_event": "填写完整小事件",
+      "director_library_status": "PENDING",
+      "director_request_path": "01_SCRIPT/director_requests/EP001-SG01.json",
+      "director_representation_path": "02_SHOTGROUPS/EP001/director_representations/EP001-SG01.json",
+      "scene_state_ledger_path": "02_SHOTGROUPS/EP001/scene_state_ledger.json",
+      "has_spoken_language": false,
+      "start_blocking": {
+        "world_coordinates": "填写真实场景位置",
+        "screen_coordinates": "填写当前机位画面位置"
+      },
+      "shots": [{"shot_id": "S01", "start_seconds": 0, "end_seconds": 15, "purpose": "填写镜头主要任务", "existence_reason": "说明这个镜头为什么不可删除"}],
+      "assets": [],
+      "clean_prompt": "填写纯净视频提示词"
+    }
+  ],
+  "audits": {"script_fidelity": "PENDING", "asset_coverage": "PENDING", "continuity_generatability": "PENDING"},
+  "production_ready": false,
+  "sound_plan": {"status": "PENDING", "cues": []},
+  "final_episode_ready": false
+}

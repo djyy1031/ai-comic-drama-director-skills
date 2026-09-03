@@ -1,0 +1,6 @@
+interface:
+  display_name: "人工智能漫剧导演"
+  short_description: "拆集、资产、分镜组、视频提示词与声音全流程"
+  default_prompt: "使用 $make-ai-comic-drama，把这份小说或剧本制作成忠于原文、节奏紧凑且可直接生产的人工智能漫剧。"
+policy:
+  allow_implicit_invocation: true

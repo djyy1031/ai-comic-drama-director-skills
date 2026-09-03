@@ -1,0 +1,43 @@
+name: 错误报告
+description: 报告 Skill 缺失、误触发、输出不连续或验证失败
+title: "[错误] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: skill
+    attributes:
+      label: 涉及哪个 Skill
+      options:
+        - make-ai-comic-drama
+        - ai-cinematic-directing-assets
+        - 两者协作
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述
+      description: 请说明发生了什么，不要粘贴私人路径或未授权的完整剧本。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 最小复现输入
+      description: 请用原创或匿名化的最小案例。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Skill 版本与模型版本
+      placeholder: make-ai-comic-drama 2.3.0；Seedance 2.5
+    validations:
+      required: true
+

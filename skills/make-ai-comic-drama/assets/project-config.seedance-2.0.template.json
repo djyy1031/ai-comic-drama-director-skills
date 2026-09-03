@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "project_name": "填写项目名",
+  "model_profile": "seedance-2.0",
+  "render_mode": "2D",
+  "aspect_ratio": "9:16",
+  "visual_style": "填写唯一视觉风格",
+  "genre": {"primary": "填写主类型", "packs": []},
+  "director_knowledge": {
+    "preferred_skill": "ai-cinematic-directing-assets",
+    "allow_internal_fallback": true
+  },
+  "episode": {"target_seconds": null, "final_max_seconds": 180},
+  "subtitle_policy": {
+    "generate_dialogue_subtitles": false,
+    "append_to_each_language_shot": true,
+    "required_language_shot_suffix": "视频严禁出现台词、内心独白与系统语音字幕。",
+    "allow_story_ui_text": true
+  }
+}

@@ -1,0 +1,24 @@
+name: 功能建议
+description: 提议新的工作流、导演模块、题材包或验证规则
+title: "[建议] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 这个建议解决哪类真实生产问题？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: 不应改变的规则
+      description: 例如原文台词、模型上限、资产命名或连续性要求。
+
