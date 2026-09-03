@@ -27,10 +27,12 @@
 
 ### 方法一：下载发布包
 
-在仓库的 Releases（版本发布）页面下载两个独立压缩包，并分别导入 Codex：
+直接下载两个独立压缩包，并分别导入 Codex：
 
-1. `make-ai-comic-drama-v2.3.0.zip`
-2. `ai-cinematic-directing-assets-v1.0.0.zip`
+1. [人工智能漫剧导演 v2.3.0](releases/make-ai-comic-drama-v2.3.0.zip)
+2. [AI 影视导演语言资产库 v1.0.0](releases/ai-cinematic-directing-assets-v1.0.0.zip)
+
+文件校验值见 [SHA256SUMS.txt](releases/SHA256SUMS.txt)。
 
 完整流程建议两个都安装。只安装主流程 Skill 也能运行，但专业导演语言会使用内置基础规则降级完成。
 
@@ -67,4 +69,3 @@
 ## 许可与声明
 
 本项目采用 [MIT License（MIT 开源许可证）](LICENSE)。本项目不是 Seedance、字节跳动或 OpenAI 的官方项目；模型能力和平台审核规则可能变化，使用者需自行确认素材权利、生成内容合规和当前平台限制。
-
