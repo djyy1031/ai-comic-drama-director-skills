@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.1",
+  "project_name": "",
+  "source_scope": {
+    "type": "FULL_SCRIPT",
+    "path_or_text": "",
+    "is_complete": true
+  },
+  "project_config": {
+    "render_mode": "",
+    "aspect_ratio": "",
+    "visual_style": "",
+    "era_region": ""
+  },
+  "series_color_bible": {
+    "action": "CREATE_OR_LOAD",
+    "version": "1.0",
+    "existing_path": "",
+    "creative_direction": "",
+    "postproduction_requirements": ""
+  },
+  "generation_profile": {
+    "target": "GPT_WEB",
+    "max_separate_images_per_batch": 10,
+    "require_separate_outputs": true,
+    "forbid_multi_panel": true,
+    "preferred_workflow_mode": "ONE_CLICK_DRAFT_SET",
+    "require_anchor_review_before_production_ready": true
+  },
+  "existing_scene_assets": [],
+  "requested_output": [
+    "SERIES_COLOR_BIBLE",
+    "SCENE_EVIDENCE_LEDGER",
+    "SCENE_FAMILY_PACKAGE",
+    "ENVIRONMENT_VARIANT_LEDGER",
+    "IMAGE_PROMPTS"
+  ],
+  "locked_items": [],
+  "known_failures": []
+}

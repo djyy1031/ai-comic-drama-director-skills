@@ -1,0 +1,140 @@
+{
+  "schema_version": "1.1",
+  "project_name": "",
+  "source_status": "COMPLETE",
+  "series_color_bible": {
+    "version": "1.0",
+    "status": "PENDING",
+    "visual_card_asset_path": "",
+    "swatches": [
+      {
+        "name": "",
+        "hex": "",
+        "role": "",
+        "prompt_terms": []
+      }
+    ],
+    "grade_profile": {
+      "saturation": "",
+      "contrast": "",
+      "black_level": "",
+      "highlight_temperature": "",
+      "shadow_tint": "",
+      "forbidden_casts": []
+    },
+    "post_reference_asset_id": ""
+  },
+  "scene_families": [
+    {
+      "asset_id": "scene-family-001",
+      "canonical_name": "",
+      "version": "1.0",
+      "review_status": "PENDING",
+      "base_environment_state": {
+        "state_id": "DAY_CLEAR_BASE",
+        "time": "DAY",
+        "weather": "CLEAR",
+        "source_basis": "DEFAULT_CLEAR_DAY"
+      },
+      "evidence": [
+        {
+          "classification": "EXPLICIT",
+          "source_location": "",
+          "fact": ""
+        }
+      ],
+      "visual_dna": {
+        "era_region": "",
+        "architecture": "",
+        "materials": [],
+        "palette": [],
+        "motifs": [],
+        "wear_logic": "",
+        "identity_anchors": [],
+        "base_light_logic": ""
+      },
+      "spatial_model": {
+        "floors": [],
+        "connections": [],
+        "routes": [],
+        "sightlines": [],
+        "assumptions": []
+      },
+      "anchor_strategy": {
+        "anchor_type": "",
+        "reason": "",
+        "anchor_asset_ids": [],
+        "review_status": "PENDING"
+      },
+      "assets": [
+        {
+          "asset_id": "zone-001",
+          "canonical_name": "",
+          "asset_type": "ZONE_MASTER",
+          "version": "1.0",
+          "parent_asset_id": "scene-family-001",
+          "parent_version": "1.0",
+          "color_bible_version": "1.0",
+          "environment_state_id": "DAY_CLEAR_BASE",
+          "locked_features": [],
+          "allowed_delta": [],
+          "scene_content_layers": {
+            "structural_fixed": [],
+            "permanent_dressing": [],
+            "state_dressing": [],
+            "shot_props_excluded": [],
+            "character_props_excluded": []
+          },
+          "camera_position": "",
+          "looking_direction": "",
+          "visible_connections": [],
+          "shared_anchors": [],
+          "must_have": [],
+          "must_not_have": [],
+          "allowed_enrichment": [],
+          "invariant_from_parent": [],
+          "prompt": "",
+          "review_status": "PENDING"
+        }
+      ],
+      "generation_batches": [
+        {
+          "batch_id": "scene-family-001-batch-01",
+          "scene_family_id": "scene-family-001",
+          "visual_dna_version": "1.0",
+          "state_version": "DAY_CLEAR_BASE",
+          "generation_mode": "SEPARATE_IMAGES",
+          "workflow_mode": "ONE_CLICK_DRAFT_SET",
+          "max_outputs": 10,
+          "forbid_composite": true,
+          "anchor_asset_ids": [],
+          "shared_scene_brief": "",
+          "production_ready": false,
+          "asset_ids": [
+            "zone-001"
+          ]
+        }
+      ],
+      "environment_variants": [
+        {
+          "variant_id": "scene-family-001-day-rain",
+          "reference_asset_id": "zone-001",
+          "target_time": "DAY",
+          "target_weather": "RAIN",
+          "episode_usage": [],
+          "source_evidence": [],
+          "allowed_environment_delta": [],
+          "locked_unchanged": [
+            "摄影机与构图",
+            "建筑格局与连接关系",
+            "固定物件的数量与位置",
+            "材质纹理与磨损"
+          ],
+          "color_bible_version": "1.0",
+          "variant_prompt": "",
+          "status": "PENDING"
+        }
+      ]
+    }
+  ]
+}

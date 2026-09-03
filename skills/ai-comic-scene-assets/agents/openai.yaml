@@ -1,0 +1,6 @@
+interface:
+  display_name: "漫剧场景资产导演"
+  short_description: "全文建模并生成跨集一致的场景资产提示词"
+  default_prompt: "使用 $ai-comic-scene-assets，读取完整剧本，先建立全剧统一色卡和白天母资产，再为跨集场景建立一致的场景家族、空间关系、逐张生图提示词，以及按集数登记的时间天气派生提示词。"
+policy:
+  allow_implicit_invocation: true
