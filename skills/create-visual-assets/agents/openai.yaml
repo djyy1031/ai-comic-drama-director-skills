@@ -1,6 +1,0 @@
-interface:
-  display_name: "中转站生图"
-  short_description: "Generate, save, and display visual assets"
-  default_prompt: "Use $create-visual-assets to generate a polished image for my request."
-policy:
-  allow_implicit_invocation: true
