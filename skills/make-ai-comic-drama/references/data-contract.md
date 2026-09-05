@@ -49,6 +49,7 @@ PROJECT/
   "render_mode": "2D",
   "aspect_ratio": "9:16",
   "visual_style": "明确风格",
+  "global_prompt_profile": "已锁定全局提示词版本",
   "genre": {"primary": "主类型", "packs": []},
   "director_knowledge": {
     "preferred_skill": "ai-cinematic-directing-assets",
@@ -64,7 +65,7 @@ PROJECT/
 }
 ```
 
-`model_profile` 是模型隔离唯一开关。不得在分镜组级别临时切换。`render_mode`、`aspect_ratio`、`visual_style` 同样是项目初始化必填项，不得留空或使用未确认的默认值。
+`model_profile` 是模型隔离唯一开关。不得在分镜组级别临时切换。`render_mode`、`aspect_ratio`、`visual_style`、`global_prompt_profile` 同样是项目初始化必填项，不得留空或使用未确认的默认值。
 
 `episode.target_seconds` 默认留空。分析完原剧本后再按实际可表现内容写入预计时长；它不是必须凑满的硬下限。最终不得超过 `final_max_seconds=180`，不得用空镜、重复反应、静止画面或无意义运镜凑时长。
 
@@ -83,18 +84,33 @@ PROJECT/
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "episode": 1,
   "model_profile": "seedance-2.0",
   "planned_final_duration_seconds": 120,
   "timeline_overhead_seconds": 0,
   "final_duration_seconds": null,
+  "language_units": [
+    {
+      "language_id": "DIA01",
+      "speaker": "原文角色名",
+      "kind": "DIALOGUE",
+      "full_text": "你不要逃避，告诉我真相。",
+      "shot_group_ids": ["EP001-SG01"],
+      "start_trigger": "角色完成具体动作并看向目标后",
+      "timing_basis": "ACTUAL_READ",
+      "spoken_duration_seconds": 3.2,
+      "continuity_requirement": "后续片段无停顿承接，不重启呼吸和语气",
+      "cross_group_exception": false,
+      "cross_group_transition": null
+    }
+  ],
   "shot_groups": [
     {
       "shot_group_id": "EP001-SG01",
       "duration_seconds": 15,
       "duration_exception_reason": null,
-      "scene_name": "综合训练教室",
+      "scene_name": "金融一班教室",
       "story_event": "事件",
       "director_library_status": "AI_CINEMATIC_DIRECTING_ASSETS",
       "director_request_path": "01_SCRIPT/director_requests/EP001-SG01.json",
@@ -106,9 +122,12 @@ PROJECT/
         "screen_coordinates": "当前机位画面位置"
       },
       "shots": [
-        {"shot_id": "S01", "start_seconds": 0, "end_seconds": 3, "purpose": "建立空间", "existence_reason": "交代出口、距离和轴线"},
-        {"shot_id": "S02", "kind": "continuous_language_block", "start_seconds": 3, "end_seconds": 12, "purpose": "完整台词与自动镜头过渡", "existence_reason": "完成不可切断的情绪转折"}
+        {"shot_id": "S01", "start_seconds": 0, "end_seconds": 3, "shot_signature": "双人中景|轴线同侧|关系建立", "purpose": "建立空间", "existence_reason": "交代出口、距离和轴线", "spoken_segments": []},
+        {"shot_id": "S02", "start_seconds": 3, "end_seconds": 6, "shot_signature": "过肩中近景|轴线同侧|说话者", "purpose": "说话者过肩中近景", "existence_reason": "动作触发语言并推进情绪", "spoken_segments": [{"language_id": "DIA01", "segment_index": 1, "text": "你不要逃避，", "start_mode": "ACTION_TRIGGER", "start_trigger": "角色完成具体动作并看向目标后", "spoken_duration_seconds": 1.3, "timing_basis": "ACTUAL_READ", "mouth_state": "现场口型同步", "delivery_continuity": "开始同一条完整语言"}]},
+        {"shot_id": "S03", "start_seconds": 6, "end_seconds": 9, "shot_signature": "近景|轴线同侧|听者反应", "purpose": "听者反应", "existence_reason": "让关系变化可见", "spoken_segments": [{"language_id": "DIA01", "segment_index": 2, "text": "告诉我", "start_mode": "CONTINUE_WITHOUT_RESTART", "start_trigger": "切到听者反应时", "spoken_duration_seconds": 0.8, "timing_basis": "ACTUAL_READ", "mouth_state": "说话者画外连续声", "delivery_continuity": "无停顿承接上一镜"}]},
+        {"shot_id": "S04", "start_seconds": 9, "end_seconds": 12, "shot_signature": "说话者近景|轴线同侧|语言落点", "purpose": "说话者落点", "existence_reason": "完成台词与情绪落点", "spoken_segments": [{"language_id": "DIA01", "segment_index": 3, "text": "真相。", "start_mode": "CONTINUE_WITHOUT_RESTART", "start_trigger": "切回说话者近景时", "spoken_duration_seconds": 1.1, "timing_basis": "ACTUAL_READ", "mouth_state": "现场口型连续", "delivery_continuity": "无停顿承接并完成整句"}]}
       ],
+      "prompt_asset_bindings": ["原文角色名=原文角色名音色=", "金融一班教室="],
       "assets": [],
       "clean_prompt": "纯净提示词"
     }
@@ -126,14 +145,22 @@ PROJECT/
 
 `planned_final_duration_seconds = 所有分镜组实际时长之和 + timeline_overhead_seconds`。
 
-普通镜头使用各自起止时间。`kind = continuous_language_block` 表示整个区间承载一条连续对白、独白或系统语音；区间内部只描述镜头顺序和情绪节点，不再建立带子时间点的小镜头，避免音轨被重复或重启。
+所有视觉镜头都使用各自起止时间。完整对白、独白、旁白、画外音或系统语音登记在集级 `language_units` 作为原文校验基准；真正进入视频提示词的是各镜 `spoken_segments`。同一语言单元的片段按 `segment_index` 拼接后必须逐字等于 `full_text`。第一片段使用 `ACTION_TRIGGER` 并写具体动作或现场事件；后续片段使用 `CONTINUE_WITHOUT_RESTART`，无停顿承接上一镜。禁止另列独立计时音轨总设定，也禁止使用 `kind = continuous_language_block` 把整段语言伪装成一个长镜头。
+
+语言时长优先使用 `ACTUAL_READ`；规划阶段可暂用 `ESTIMATED`，但必须依据角色声线、情绪、重音、停顿和触发动作逐段估算，生产前重新试读校时。每段 `spoken_duration_seconds` 不得超过该镜头在触发动作完成后的可用时长。
+
+语言单元默认只属于一个分镜组。只有 `cross_group_exception=true` 且 `cross_group_transition` 同时记录上游批准、前组尾镜签名、后组首镜签名和转场方法时才允许跨组；两个镜头签名不得相同。
+
+`prompt_asset_bindings` 是纯净提示词必须使用的等号绑定槽，不等于完整资产清单。即使不运行资产分析流程，也必须列出本组实际发声角色、出镜角色、场景、机位、道具和必要声音；这些行必须位于完整全局控制段之后、`【摄影机运动总设定】`之前。
 
 ## 导演知识调用数据
 
 - `01_SCRIPT/director_requests/`：保存交给 `$ai-cinematic-directing-assets` 的调用请求，包括不可修改剧情事实、原文台词、完整事件、项目配置、上一组结束状态和参考版本。
+- `02_SHOTGROUPS/EP001/performance_plans/`：保存人物表演资产库返回的目标、策略、听者反应、表演节拍和状态继承，不包含摄影机和最终提示词。
 - `02_SHOTGROUPS/EP001/director_representations/`：保存专业库返回的中性导演镜头表示。它不是最终Seedance提示词，不包含全局固定画质段或资产等号绑定区。
+- `02_SHOTGROUPS/EP001/execution_reports/`：保存镜头执行与连续性检查结果，逐镜记录第一帧、空间关系、道具手、摄影机、光线、物理和逐切点继承。
 - `02_SHOTGROUPS/EP001/scene_state_ledger.json`：保存每组入组和出组的世界空间、画面空间、人物关系、人物、环境、摄影机与剧情状态。
-- 专业库未安装时，在导演表示中记录 `library_status = "FALLBACK_INTERNAL"`；成功调用时记录 `library_status = "AI_CINEMATIC_DIRECTING_ASSETS"`。禁止在未调用时伪造成功状态。
+- 分别记录 `performance_library_status`、`directing_library_status` 和 `execution_library_status`。未安装对应模块时该项为 `FALLBACK_INTERNAL`；成功调用时记录对应 Skill 名称。禁止用一个总状态掩盖某层缺失或在未调用时伪造成功。
 - 原文事实和台词是上游权威数据。导演表示与原文冲突时必须标记 `STALE` 并返修，禁止由导演表示覆盖原文。
 
 ## 资产字段
@@ -171,7 +198,7 @@ PROJECT/
 
 ## 项目状态
 
-`PROJECT_STATUS.json` 至少记录：当前阶段、模型配置、导演知识库状态、导演表示版本、冻结分镜版本、状态账本版本、母资产版本、最后审核结果、待用户动作、更新时间。
+`PROJECT_STATUS.json` 至少记录：当前阶段、模型配置、人物表演库状态、导演协调库状态、镜头执行库状态、导演表示版本、冻结分镜版本、状态账本版本、母资产版本、最后审核结果、待用户动作、更新时间。
 
 任何上游版本变化使下游结果标记 `STALE`。
 
@@ -184,6 +211,6 @@ PROJECT/
 
 ## 校验阶段
 
-- `planning`：配置、模型隔离、每集180秒上限、分镜组时长、普通镜头时间、连续语言表演块外层时间、字幕结尾和明确命名。
+- `planning`：配置、模型隔离、全局控制段、提示词资产绑定、每集180秒上限、分镜组时长、每个普通镜头的独立时间、语言原文片段、动作起声触发、无停顿承接、跨组限制、字幕结尾和明确命名。
 - `production`：包含planning，并要求三轮审核为PASS、必须资产READY、`production_ready=true`。
 - `final`：包含production，并要求真实成片时长不超过180秒、声音执行表READY、授权明确、`final_episode_ready=true`。

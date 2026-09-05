@@ -27,6 +27,7 @@ class InitProjectTests(unittest.TestCase):
                 render_mode="3D",
                 aspect_ratio="16:9",
                 visual_style="",
+                global_prompt_profile="GLOBAL_3D_V1",
                 genre="校园求生",
             )
             with self.assertRaisesRegex(ValueError, "visual_style不能为空"):
@@ -41,6 +42,7 @@ class InitProjectTests(unittest.TestCase):
                 render_mode="3D",
                 aspect_ratio="9:16",
                 visual_style="3D国漫",
+                global_prompt_profile="GLOBAL_3D_V1",
                 genre="修仙",
             )
             root = INITIALIZER.initialize(args)
@@ -49,6 +51,7 @@ class InitProjectTests(unittest.TestCase):
                 (root / "02_SHOTGROUPS/episode_manifest.template.json").read_text(encoding="utf-8")
             )
             self.assertEqual(config["model_profile"], "seedance-2.5")
+            self.assertEqual(config["global_prompt_profile"], "GLOBAL_3D_V1")
             self.assertIsNone(config["episode"]["target_seconds"])
             self.assertTrue(config["subtitle_policy"]["append_to_each_language_shot"])
             self.assertEqual(
@@ -70,6 +73,7 @@ class InitProjectTests(unittest.TestCase):
                 render_mode="2D",
                 aspect_ratio="9:16",
                 visual_style="2D国漫",
+                global_prompt_profile="GLOBAL_2D_V1",
                 genre="校园",
             )
             with self.assertRaises(FileExistsError):

@@ -30,11 +30,34 @@ QUOTE_PATTERNS = (
     re.compile(r"「[^」]*」", re.DOTALL),
     re.compile(r"『[^』]*』", re.DOTALL),
 )
-SPOKEN_MARKERS = ("对话：", "内心独白：", "旁白：", "画外音：", "系统语音：", "系统播报：")
+SPOKEN_MARKERS = (
+    "开始说：", "继续说：", "开始内心独白：", "继续内心独白：",
+    "开始旁白：", "继续旁白：", "开始画外音：", "继续画外音：",
+    "开始系统语音：", "继续系统语音：",
+)
+BANNED_LANGUAGE_BLOCK_MARKERS = (
+    "【连续语言音轨总设定】", "【连续对白音轨总设定】", "音轨覆盖【",
+)
+GLOBAL_PROMPT_START = "【全局固定画质参数】"
+GLOBAL_NEGATIVE_HEADER = "【全局通用负面提示词】"
+CAMERA_HEADER = "【摄影机运动总设定】"
 SHOT_HEADER_PATTERN = re.compile(
-    r"^【\s*\d+(?:\.\d+)?\s*[-—～~]\s*\d+(?:\.\d+)?\s*秒\s*】",
+    r"^【\s*(?P<start>\d+(?:\.\d+)?)\s*[-—～~]\s*"
+    r"(?P<end>\d+(?:\.\d+)?)\s*秒(?:\s*｜[^】]+)?\s*】",
 )
 SECTION_HEADER_PATTERN = re.compile(r"^【[^】]+】")
+DEFAULT_MAX_SHOT_SECONDS = 6.0
+TIMING_BASES = {"ACTUAL_READ", "ESTIMATED"}
+START_MODES = {"ACTION_TRIGGER", "CONTINUE_WITHOUT_RESTART"}
+REQUIRED_LANGUAGE_UNIT_FIELDS = (
+    "language_id", "speaker", "kind", "full_text", "shot_group_ids",
+    "start_trigger", "timing_basis", "spoken_duration_seconds",
+    "continuity_requirement", "cross_group_exception",
+)
+REQUIRED_SEGMENT_FIELDS = (
+    "language_id", "segment_index", "text", "start_mode", "start_trigger",
+    "spoken_duration_seconds", "timing_basis", "mouth_state", "delivery_continuity",
+)
 
 
 @dataclass
@@ -101,6 +124,8 @@ def validate_config(config: dict[str, Any], result: Result) -> str | None:
         result.error("project_config.aspect_ratio必须是明确比例，例如9:16或16:9。")
     if not str(config.get("visual_style") or "").strip():
         result.error("project_config.visual_style不能为空，必须填写统一美术风格。")
+    if not str(config.get("global_prompt_profile") or "").strip():
+        result.error("project_config.global_prompt_profile不能为空，必须锁定全局控制提示词版本。")
 
     episode_config = config.get("episode")
     if not isinstance(episode_config, dict):
@@ -131,6 +156,7 @@ def validate_shot_timeline(
     group_label: str,
     duration: float,
     shots: Any,
+    has_spoken_language: bool,
     result: Result,
 ) -> None:
     prefix = f"{manifest_path}:{group_label}"
@@ -139,6 +165,7 @@ def validate_shot_timeline(
         return
 
     previous_end = 0.0
+    seen_ids: set[str] = set()
     for index, shot in enumerate(shots, start=1):
         if not isinstance(shot, dict):
             result.error(f"{prefix} 第{index}镜必须是对象。")
@@ -150,13 +177,48 @@ def validate_shot_timeline(
             continue
         if end <= start:
             result.error(f"{prefix} 第{index}镜结束时间必须大于开始时间。")
+        else:
+            shot_duration = end - start
+            if shot_duration > DEFAULT_MAX_SHOT_SECONDS:
+                approved = shot.get("long_take_approved") is True
+                reason = str(shot.get("long_take_reason") or "").strip()
+                if not approved or not reason:
+                    result.error(
+                        f"{prefix} 第{index}镜时长{shot_duration:g}秒超过普通单镜6秒上限；"
+                        "只有用户或原文明示一镜到底时，才能同时填写"
+                        "long_take_approved=true和long_take_reason。"
+                    )
+        shot_id = str(shot.get("shot_id") or "").strip()
+        if not shot_id:
+            result.error(f"{prefix} 第{index}镜缺少shot_id。")
+        elif shot_id in seen_ids:
+            result.error(f"{prefix} shot_id重复：{shot_id}")
+        else:
+            seen_ids.add(shot_id)
         if not str(shot.get("purpose") or "").strip():
             result.error(f"{prefix} 第{index}镜必须写purpose。")
+        if not str(shot.get("existence_reason") or "").strip():
+            result.error(f"{prefix} 第{index}镜必须写existence_reason。")
+        if not str(shot.get("shot_signature") or "").strip():
+            result.error(f"{prefix} 第{index}镜必须写shot_signature，用于跨组和重复镜头检查。")
+        if not isinstance(shot.get("spoken_segments"), list):
+            result.error(f"{prefix} 第{index}镜spoken_segments必须是数组。")
         if not close(start, previous_end):
             result.error(
                 f"{prefix} 第{index}镜时间不连续：应从{previous_end:g}开始，实际{start:g}。"
             )
         previous_end = end
+
+    if has_spoken_language and duration > DEFAULT_MAX_SHOT_SECONDS and len(shots) == 1:
+        shot = shots[0] if isinstance(shots[0], dict) else {}
+        if not (
+            shot.get("long_take_approved") is True
+            and str(shot.get("long_take_reason") or "").strip()
+        ):
+            result.error(
+                f"{prefix} 含语言分镜组超过6秒时不能只有一个镜头；"
+                "必须拆成正常计时的双人、过肩、近景或反应镜头。"
+            )
 
     if not close(previous_end, duration):
         result.error(
@@ -164,10 +226,163 @@ def validate_shot_timeline(
         )
 
 
+def validate_language_units(
+    manifest_path: Path,
+    groups: list[Any],
+    units: Any,
+    stage: str,
+    result: Result,
+) -> None:
+    prefix = str(manifest_path)
+    if not isinstance(units, list):
+        result.error(f"{prefix} language_units必须是数组。")
+        return
+
+    group_order: dict[str, int] = {}
+    segments_by_unit: dict[str, list[tuple[int, int, dict[str, Any], float]]] = {}
+    for group_index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+        group_id = str(group.get("shot_group_id") or "").strip()
+        if group_id:
+            group_order[group_id] = group_index
+        for shot_index, shot in enumerate(group.get("shots") or []):
+            if not isinstance(shot, dict):
+                continue
+            start = as_number(shot.get("start_seconds"))
+            end = as_number(shot.get("end_seconds"))
+            shot_duration = (end - start) if start is not None and end is not None else 0.0
+            for segment in shot.get("spoken_segments") or []:
+                if not isinstance(segment, dict):
+                    result.error(f"{prefix}:{group_id} 第{shot_index + 1}镜语言片段必须是对象。")
+                    continue
+                unit_id = str(segment.get("language_id") or "").strip()
+                segments_by_unit.setdefault(unit_id, []).append(
+                    (group_index, shot_index, segment, shot_duration)
+                )
+
+    unit_by_id: dict[str, dict[str, Any]] = {}
+    for index, unit in enumerate(units, start=1):
+        if not isinstance(unit, dict):
+            result.error(f"{prefix} 第{index}条language_unit必须是对象。")
+            continue
+        for field_name in REQUIRED_LANGUAGE_UNIT_FIELDS:
+            if field_name not in unit:
+                result.error(f"{prefix} 第{index}条language_unit缺少{field_name}。")
+        unit_id = str(unit.get("language_id") or "").strip()
+        if not unit_id or unit_id in unit_by_id:
+            result.error(f"{prefix} 第{index}条language_unit的language_id为空或重复。")
+            continue
+        unit_by_id[unit_id] = unit
+
+        for field_name in ("speaker", "kind", "full_text", "start_trigger", "continuity_requirement"):
+            if not str(unit.get(field_name) or "").strip():
+                result.error(f"{prefix} 语言单元{unit_id}的{field_name}不能为空。")
+        group_ids = unit.get("shot_group_ids")
+        if not isinstance(group_ids, list) or not group_ids:
+            result.error(f"{prefix} 语言单元{unit_id}的shot_group_ids必须是非空数组。")
+            group_ids = []
+        else:
+            normalized_ids = [str(item).strip() for item in group_ids]
+            if any(not item or item not in group_order for item in normalized_ids):
+                result.error(f"{prefix} 语言单元{unit_id}引用不存在的分镜组。")
+            if len(set(normalized_ids)) != len(normalized_ids):
+                result.error(f"{prefix} 语言单元{unit_id}的shot_group_ids不能重复。")
+            group_ids = normalized_ids
+
+        timing_basis = unit.get("timing_basis")
+        if timing_basis not in TIMING_BASES:
+            result.error(f"{prefix} 语言单元{unit_id}的timing_basis必须是ACTUAL_READ或ESTIMATED。")
+        if stage in {"production", "final"} and timing_basis != "ACTUAL_READ":
+            result.error(f"{prefix} 语言单元{unit_id}进入生产前必须使用ACTUAL_READ重新校时。")
+        unit_duration = as_number(unit.get("spoken_duration_seconds"))
+        if unit_duration is None or unit_duration <= 0:
+            result.error(f"{prefix} 语言单元{unit_id}的spoken_duration_seconds必须是正数。")
+
+        cross_group = unit.get("cross_group_exception") is True
+        if len(group_ids) > 1 and not cross_group:
+            result.error(f"{prefix} 语言单元{unit_id}默认不得跨分镜组。")
+        if len(group_ids) <= 1 and cross_group:
+            result.error(f"{prefix} 语言单元{unit_id}未跨组，不应开启cross_group_exception。")
+        if cross_group:
+            transition = unit.get("cross_group_transition")
+            required = (
+                "approved_by", "reason", "from_group_id", "to_group_id",
+                "from_shot_signature", "to_shot_signature", "transition_method",
+            )
+            if not isinstance(transition, dict):
+                result.error(f"{prefix} 语言单元{unit_id}跨组时必须填写cross_group_transition。")
+            else:
+                for field_name in required:
+                    if not str(transition.get(field_name) or "").strip():
+                        result.error(f"{prefix} 语言单元{unit_id}跨组转场缺少{field_name}。")
+                if transition.get("from_shot_signature") == transition.get("to_shot_signature"):
+                    result.error(f"{prefix} 语言单元{unit_id}跨组前后不得使用相同镜头签名。")
+
+    for unit_id in segments_by_unit.keys() - unit_by_id.keys():
+        if unit_id:
+            result.error(f"{prefix} 镜头引用不存在的语言单元：{unit_id}")
+        else:
+            result.error(f"{prefix} 镜头语言片段缺少language_id。")
+
+    for unit_id, unit in unit_by_id.items():
+        records = segments_by_unit.get(unit_id, [])
+        if not records:
+            result.error(f"{prefix} 语言单元{unit_id}未被任何镜头承载。")
+            continue
+        records.sort(key=lambda item: (item[0], item[1], item[2].get("segment_index", 0)))
+        segments = [item[2] for item in records]
+        used_group_ids = []
+        for group_index, _, _, _ in records:
+            group_id = next((key for key, value in group_order.items() if value == group_index), "")
+            if group_id and group_id not in used_group_ids:
+                used_group_ids.append(group_id)
+        declared_group_ids = [str(item).strip() for item in unit.get("shot_group_ids") or []]
+        if used_group_ids != declared_group_ids:
+            result.error(f"{prefix} 语言单元{unit_id}实际承载分镜组与shot_group_ids不一致。")
+
+        indexes = [segment.get("segment_index") for segment in segments]
+        if indexes != list(range(1, len(segments) + 1)):
+            result.error(f"{prefix} 语言单元{unit_id}的segment_index必须从1连续递增且不得重复。")
+        joined = "".join(str(segment.get("text") or "") for segment in segments)
+        if joined != str(unit.get("full_text") or ""):
+            result.error(f"{prefix} 语言单元{unit_id}的逐镜片段无法逐字拼回完整原文。")
+
+        total_spoken = 0.0
+        for position, ((_, _, segment, shot_duration)) in enumerate(records, start=1):
+            for field_name in REQUIRED_SEGMENT_FIELDS:
+                if field_name not in segment:
+                    result.error(f"{prefix} 语言单元{unit_id}第{position}片段缺少{field_name}。")
+            expected_mode = "ACTION_TRIGGER" if position == 1 else "CONTINUE_WITHOUT_RESTART"
+            if segment.get("start_mode") != expected_mode:
+                result.error(f"{prefix} 语言单元{unit_id}第{position}片段start_mode必须是{expected_mode}。")
+            if not str(segment.get("start_trigger") or "").strip():
+                result.error(f"{prefix} 语言单元{unit_id}第{position}片段必须写具体start_trigger。")
+            segment_duration = as_number(segment.get("spoken_duration_seconds"))
+            if segment_duration is None or segment_duration <= 0:
+                result.error(f"{prefix} 语言单元{unit_id}第{position}片段时长必须是正数。")
+            else:
+                total_spoken += segment_duration
+                if segment_duration > shot_duration + 0.01:
+                    result.error(f"{prefix} 语言单元{unit_id}第{position}片段时长超过承载镜头时长。")
+            basis = segment.get("timing_basis")
+            if basis not in TIMING_BASES:
+                result.error(f"{prefix} 语言单元{unit_id}第{position}片段timing_basis无效。")
+            if stage in {"production", "final"} and basis != "ACTUAL_READ":
+                result.error(f"{prefix} 语言单元{unit_id}第{position}片段进入生产前必须使用ACTUAL_READ。")
+            for field_name in ("mouth_state", "delivery_continuity"):
+                if not str(segment.get(field_name) or "").strip():
+                    result.error(f"{prefix} 语言单元{unit_id}第{position}片段缺少{field_name}。")
+        unit_duration = as_number(unit.get("spoken_duration_seconds"))
+        if unit_duration is not None and not close(total_spoken, unit_duration, tolerance=0.25):
+            result.error(f"{prefix} 语言单元{unit_id}的片段时长合计与单元时长不一致。")
+
+
 def validate_prompt(
     manifest_path: Path,
     group_label: str,
     group: dict[str, Any],
+    shots: Any,
     result: Result,
 ) -> None:
     prefix = f"{manifest_path}:{group_label}"
@@ -176,13 +391,56 @@ def validate_prompt(
         result.error(f"{prefix} clean_prompt不能为空。")
         return
 
+    prompt_lines = [line.strip() for line in prompt.splitlines() if line.strip()]
+    if not prompt_lines or prompt_lines[0] != GLOBAL_PROMPT_START:
+        result.error(f"{prefix} 纯净提示词第一行必须是{GLOBAL_PROMPT_START}。")
+    if any(marker in prompt for marker in BANNED_LANGUAGE_BLOCK_MARKERS):
+        result.error(f"{prefix} 禁止使用独立计时的连续语言音轨总设定；语言必须写入逐镜。")
+    try:
+        negative_index = prompt_lines.index(GLOBAL_NEGATIVE_HEADER)
+    except ValueError:
+        negative_index = -1
+        result.error(f"{prefix} 缺少{GLOBAL_NEGATIVE_HEADER}。")
+    try:
+        camera_index = prompt_lines.index(CAMERA_HEADER)
+    except ValueError:
+        camera_index = -1
+        result.error(f"{prefix} 缺少{CAMERA_HEADER}。")
+    bindings = group.get("prompt_asset_bindings")
+    if not isinstance(bindings, list) or not bindings:
+        result.error(f"{prefix} prompt_asset_bindings必须列出本组实际视频资产绑定。")
+        bindings = []
+    for binding in bindings:
+        binding_text = str(binding or "").strip()
+        if not binding_text or "\n" in binding_text or not binding_text.endswith("="):
+            result.error(f"{prefix} 资产绑定必须是单行等号槽：{binding!r}")
+            continue
+        positions = [index for index, line in enumerate(prompt_lines) if line == binding_text]
+        if len(positions) != 1:
+            result.error(f"{prefix} 资产绑定必须在提示词中原样出现一次：{binding_text}")
+            continue
+        if camera_index >= 0 and positions[0] >= camera_index:
+            result.error(f"{prefix} 资产绑定必须位于{CAMERA_HEADER}之前：{binding_text}")
+        if negative_index >= 0 and positions[0] <= negative_index:
+            result.error(f"{prefix} 资产绑定必须位于完整全局负面提示词之后：{binding_text}")
+    normalized_bindings = [str(binding or "").strip() for binding in bindings]
+    if camera_index >= 0 and normalized_bindings:
+        binding_start = camera_index - len(normalized_bindings)
+        if binding_start < 0 or prompt_lines[binding_start:camera_index] != normalized_bindings:
+            result.error(f"{prefix} 资产绑定必须按登记顺序连续排列在{CAMERA_HEADER}正前方。")
+
     shot_blocks: list[str] = []
+    prompt_intervals: list[tuple[float, float]] = []
     current_shot: list[str] | None = None
     for line in prompt.splitlines():
         stripped = line.strip()
-        if SHOT_HEADER_PATTERN.match(stripped):
+        header_match = SHOT_HEADER_PATTERN.match(stripped)
+        if header_match:
             if current_shot:
                 shot_blocks.append("\n".join(current_shot))
+            prompt_intervals.append(
+                (float(header_match.group("start")), float(header_match.group("end")))
+            )
             current_shot = [line]
             continue
         if current_shot is not None and SECTION_HEADER_PATTERN.match(stripped):
@@ -193,27 +451,80 @@ def validate_prompt(
     if current_shot:
         shot_blocks.append("\n".join(current_shot))
 
+    if isinstance(shots, list):
+        if len(prompt_intervals) != len(shots):
+            result.error(
+                f"{prefix} 纯净提示词含{len(prompt_intervals)}个计时镜头，"
+                f"但shots登记{len(shots)}个；禁止把多个镜头合并成一个长时间段。"
+            )
+        else:
+            for index, ((prompt_start, prompt_end), shot) in enumerate(
+                zip(prompt_intervals, shots), start=1
+            ):
+                if not isinstance(shot, dict):
+                    continue
+                shot_start = as_number(shot.get("start_seconds"))
+                shot_end = as_number(shot.get("end_seconds"))
+                if (
+                    shot_start is not None
+                    and shot_end is not None
+                    and (not close(prompt_start, shot_start) or not close(prompt_end, shot_end))
+                ):
+                    result.error(
+                        f"{prefix} 第{index}个提示词镜头时间"
+                        f"{prompt_start:g}～{prompt_end:g}秒与shots登记不一致。"
+                    )
+
     detected_spoken_language = any(marker in prompt for marker in SPOKEN_MARKERS)
     declared_spoken_language = group.get("has_spoken_language") is True
     if detected_spoken_language and not declared_spoken_language:
         result.error(f"{prefix} 提示词含语言内容，但has_spoken_language未标记为true。")
     language_shot_count = 0
-    for index, block in enumerate(shot_blocks, start=1):
-        if not any(marker in block for marker in SPOKEN_MARKERS):
-            continue
-        language_shot_count += 1
-        trimmed_block = block.rstrip()
-        suffix_start = len(trimmed_block) - len(REQUIRED_LANGUAGE_SHOT_SUFFIX)
-        has_separator = suffix_start > 0 and trimmed_block[suffix_start - 1].isspace()
-        if not trimmed_block.endswith(REQUIRED_LANGUAGE_SHOT_SUFFIX) or not has_separator:
-            result.error(
-                f"{prefix} 第{index}个含语言内容镜头必须以固定句结束："
-                f"{REQUIRED_LANGUAGE_SHOT_SUFFIX}"
-            )
+    if isinstance(shots, list) and len(shot_blocks) == len(shots):
+        for index, (block, shot) in enumerate(zip(shot_blocks, shots), start=1):
+            if not isinstance(shot, dict):
+                continue
+            segments = shot.get("spoken_segments")
+            if not isinstance(segments, list):
+                continue
+            if not segments:
+                if any(marker in block for marker in SPOKEN_MARKERS):
+                    result.error(f"{prefix} 第{index}镜提示词含语言，但spoken_segments为空。")
+                continue
+            language_shot_count += 1
+            trimmed_block = block.rstrip()
+            suffix_start = len(trimmed_block) - len(REQUIRED_LANGUAGE_SHOT_SUFFIX)
+            has_separator = suffix_start > 0 and trimmed_block[suffix_start - 1].isspace()
+            if not trimmed_block.endswith(REQUIRED_LANGUAGE_SHOT_SUFFIX) or not has_separator:
+                result.error(
+                    f"{prefix} 第{index}个含语言内容镜头必须以固定句结束："
+                    f"{REQUIRED_LANGUAGE_SHOT_SUFFIX}"
+                )
+            for segment in segments:
+                if not isinstance(segment, dict):
+                    continue
+                text_value = str(segment.get("text") or "")
+                quoted = any(
+                    token in block
+                    for token in (f"“{text_value}”", f'"{text_value}"', f"「{text_value}」", f"『{text_value}』")
+                )
+                if text_value and not quoted:
+                    result.error(f"{prefix} 第{index}镜未原样写入语言片段：{text_value}")
+                trigger = str(segment.get("start_trigger") or "").strip()
+                if trigger and trigger not in block:
+                    result.error(f"{prefix} 第{index}镜未原样写入语言开始触发：{trigger}")
+                if segment.get("start_mode") == "ACTION_TRIGGER":
+                    if not any(marker in block for marker in ("开始说：", "开始内心独白：", "开始旁白：", "开始画外音：", "开始系统语音：")):
+                        result.error(f"{prefix} 第{index}镜第一语言片段必须明确开始说或开始内心独白。")
+                elif segment.get("start_mode") == "CONTINUE_WITHOUT_RESTART":
+                    if "无停顿承接上一镜" not in block:
+                        result.error(f"{prefix} 第{index}镜后续语言片段必须写明无停顿承接上一镜。")
     if detected_spoken_language and language_shot_count == 0:
         result.error(f"{prefix} 语言内容必须写入带时间区间的小镜头内。")
     if declared_spoken_language and language_shot_count == 0:
         result.error(f"{prefix} has_spoken_language=true但未找到含语言内容的小镜头。")
+    if language_shot_count > 0 and not declared_spoken_language:
+        result.error(f"{prefix} spoken_segments非空，但has_spoken_language未标记为true。")
 
     descriptive_text = mask_dialogue_quotes(prompt)
     match = AMBIGUOUS_PATTERN.search(descriptive_text)
@@ -369,10 +680,16 @@ def validate_manifest(
                     f"{path}:{group_label} Seedance 2.5低于20秒时必须说明无法合并的例外原因。"
                 )
 
-        validate_shot_timeline(path, group_label, duration, group.get("shots"), result)
-        validate_prompt(path, group_label, group, result)
+        shots = group.get("shots")
+        has_spoken_language = group.get("has_spoken_language") is True
+        validate_shot_timeline(
+            path, group_label, duration, shots, has_spoken_language, result
+        )
+        validate_prompt(path, group_label, group, shots, result)
         if stage in {"production", "final"}:
             validate_assets_for_production(path, group_label, group.get("assets"), result)
+
+    validate_language_units(path, groups, manifest.get("language_units"), stage, result)
 
     if planned is not None and not close(group_total + overhead, planned):
         result.error(

@@ -30,6 +30,7 @@ def base_config(model: str) -> dict:
         "render_mode": "2D",
         "aspect_ratio": "9:16",
         "visual_style": "2D国漫",
+        "global_prompt_profile": "TEST_GLOBAL_V1",
         "genre": {"primary": "校园", "packs": []},
         "episode": {"target_seconds": None, "final_max_seconds": 180},
         "subtitle_policy": {
@@ -42,12 +43,71 @@ def base_config(model: str) -> dict:
 
 
 def base_manifest(model: str, duration: float, exception: str | None = None) -> dict:
-    prompt = (
-        "综合训练教室白天，李明站在讲台右侧，张三坐在最后一排。\n"
-        f"【0.0-{duration:g}秒】：中景固定拍摄。"
-        "对话：李明：（下颌轻收）【语气：平静】朝向张三“张三，你过来。” "
-        "视频严禁出现台词、内心独白与系统语音字幕。"
-    )
+    shots = []
+    prompt_blocks = [
+        "【全局固定画质参数】",
+        "测试项目统一画质与画幅。",
+        "【全局通用负面提示词】",
+        "禁止字幕、背景音乐和画面漂移。",
+        "李明=李明音色=",
+        "张三=",
+        "金融一班教室=",
+        "【摄影机运动总设定】",
+        "对话轴线稳定，摄影机保持轴线同侧。",
+        "【场景与光影】",
+        "金融一班教室白天，李明站在讲台右侧，张三坐在最后一排。",
+    ]
+    start = 0.0
+    index = 1
+    while start < duration:
+        end = min(start + 5.0, duration)
+        segments = []
+        if index == 1:
+            segments = [{
+                "language_id": "DIA01",
+                "segment_index": 1,
+                "text": "张三，",
+                "start_mode": "ACTION_TRIGGER",
+                "start_trigger": "李明抬眼看向张三后",
+                "spoken_duration_seconds": 0.8,
+                "timing_basis": "ACTUAL_READ",
+                "mouth_state": "李明现场口型同步",
+                "delivery_continuity": "开始同一条完整对白",
+            }]
+        elif index == 2:
+            segments = [{
+                "language_id": "DIA01",
+                "segment_index": 2,
+                "text": "你过来。",
+                "start_mode": "CONTINUE_WITHOUT_RESTART",
+                "start_trigger": "切到张三反应镜头时",
+                "spoken_duration_seconds": 1.6,
+                "timing_basis": "ACTUAL_READ",
+                "mouth_state": "李明画外连续声",
+                "delivery_continuity": "无停顿承接上一镜",
+            }]
+        shots.append(
+            {
+                "shot_id": f"S{index:02d}",
+                "start_seconds": start,
+                "end_seconds": end,
+                "shot_signature": f"镜头{index}|轴线同侧|测试主体",
+                "purpose": "推进对话与人物反应",
+                "existence_reason": "保持正常对话镜头节拍",
+                "spoken_segments": segments,
+            }
+        )
+        if index == 1:
+            language = "李明抬眼看向张三后，李明（平静）朝向张三开始说：“张三，”"
+        elif index == 2:
+            language = "切到张三反应镜头时，李明声音转为画外连续声，无停顿承接上一镜继续说：“你过来。”"
+        else:
+            language = "李明与张三保持当前空间关系，画面继续推进。"
+        suffix = " 视频严禁出现台词、内心独白与系统语音字幕。" if segments else ""
+        prompt_blocks.append(f"【{start:g}-{end:g}秒】：50mm正常对话镜头。{language}{suffix}")
+        start = end
+        index += 1
+    prompt = "\n".join(prompt_blocks)
     return {
         "schema_version": "1.0",
         "episode": 1,
@@ -55,26 +115,33 @@ def base_manifest(model: str, duration: float, exception: str | None = None) -> 
         "planned_final_duration_seconds": duration,
         "timeline_overhead_seconds": 0,
         "final_duration_seconds": duration,
+        "language_units": [{
+            "language_id": "DIA01",
+            "speaker": "李明",
+            "kind": "DIALOGUE",
+            "full_text": "张三，你过来。",
+            "shot_group_ids": ["EP001-SG01"],
+            "start_trigger": "李明抬眼看向张三后",
+            "timing_basis": "ACTUAL_READ",
+            "spoken_duration_seconds": 2.4,
+            "continuity_requirement": "切镜无停顿、不重启呼吸和语气",
+            "cross_group_exception": False,
+            "cross_group_transition": None,
+        }],
         "shot_groups": [
             {
                 "shot_group_id": "EP001-SG01",
                 "duration_seconds": duration,
                 "duration_exception_reason": exception,
-                "scene_name": "综合训练教室",
+                "scene_name": "金融一班教室",
                 "story_event": "李明叫张三到讲台",
                 "has_spoken_language": True,
                 "start_blocking": {
                     "world_coordinates": "李明在讲台右侧，张三在最后一排",
                     "screen_coordinates": "李明在画面左前景，张三在画面右后景",
                 },
-                "shots": [
-                    {
-                        "shot_id": "S01",
-                        "start_seconds": 0,
-                        "end_seconds": duration,
-                        "purpose": "完成事件",
-                    }
-                ],
+                "shots": shots,
+                "prompt_asset_bindings": ["李明=李明音色=", "张三=", "金融一班教室="],
                 "assets": [
                     {
                         "asset_id": "CHAR-LM",
@@ -165,22 +232,19 @@ class ValidatorTests(unittest.TestCase):
 
     def test_rejects_missing_language_shot_suffix(self):
         manifest = base_manifest("seedance-2.0", 15)
-        manifest["shot_groups"][0]["clean_prompt"] = (
-            "【0.0-15.0秒】：中景固定拍摄。"
-            "对话：李明：（目光稳定）【语气：平静】朝向张三“张三，你过来。”"
-        )
+        manifest["shot_groups"][0]["clean_prompt"] = manifest["shot_groups"][0][
+            "clean_prompt"
+        ].replace(" 视频严禁出现台词、内心独白与系统语音字幕。", "", 1)
         result = self.validate("seedance-2.0", manifest)
         self.assertFalse(result.ok)
         self.assertTrue(any("含语言内容镜头" in error for error in result.errors))
 
     def test_group_final_suffix_does_not_replace_each_language_shot_suffix(self):
         manifest = base_manifest("seedance-2.0", 15)
+        prompt = manifest["shot_groups"][0]["clean_prompt"]
         manifest["shot_groups"][0]["clean_prompt"] = (
-            "【0.0-7.0秒】：中景固定拍摄。"
-            "对话：李明：（平静）朝向张三“第一句。”\n"
-            "【7.0-15.0秒】：近景固定拍摄。"
-            "对话：张三：（迟疑）朝向李明“第二句。” "
-            "视频严禁出现台词、内心独白与系统语音字幕。\n"
+            prompt.replace(" 视频严禁出现台词、内心独白与系统语音字幕。", "", 1)
+            + "\n"
             "【全局锁定与禁令】\n"
             "视频严禁出现台词、内心独白与系统语音字幕。"
         )
@@ -190,10 +254,12 @@ class ValidatorTests(unittest.TestCase):
 
     def test_language_shot_suffix_requires_preceding_space(self):
         manifest = base_manifest("seedance-2.0", 15)
-        manifest["shot_groups"][0]["clean_prompt"] = (
-            "【0.0-15.0秒】：中景固定拍摄。"
-            "对话：李明：（平静）朝向张三“张三，你过来。”"
-            "视频严禁出现台词、内心独白与系统语音字幕。"
+        manifest["shot_groups"][0]["clean_prompt"] = manifest["shot_groups"][0][
+            "clean_prompt"
+        ].replace(
+            " 视频严禁出现台词、内心独白与系统语音字幕。",
+            "视频严禁出现台词、内心独白与系统语音字幕。",
+            1,
         )
         result = self.validate("seedance-2.0", manifest)
         self.assertFalse(result.ok)
@@ -206,13 +272,68 @@ class ValidatorTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertTrue(any("has_spoken_language" in error for error in result.errors))
 
+    def test_requires_global_prompt_before_every_group(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        manifest["shot_groups"][0]["clean_prompt"] = manifest["shot_groups"][0][
+            "clean_prompt"
+        ].replace("【全局固定画质参数】\n", "", 1)
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("第一行必须是" in error for error in result.errors))
+
+    def test_requires_prompt_asset_bindings_before_camera(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        manifest["shot_groups"][0]["clean_prompt"] = manifest["shot_groups"][0][
+            "clean_prompt"
+        ].replace("金融一班教室=\n", "", 1)
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("资产绑定" in error for error in result.errors))
+
+    def test_rejects_old_standalone_language_track_block(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        manifest["shot_groups"][0]["clean_prompt"] = manifest["shot_groups"][0][
+            "clean_prompt"
+        ].replace(
+            "【摄影机运动总设定】",
+            "【连续对白音轨总设定】\n音轨覆盖【0-10秒】\n【摄影机运动总设定】",
+            1,
+        )
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("禁止使用独立计时" in error for error in result.errors))
+
+    def test_rejects_language_segments_that_change_original(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        manifest["shot_groups"][0]["shots"][1]["spoken_segments"][0]["text"] = "你走开。"
+        manifest["shot_groups"][0]["clean_prompt"] = manifest["shot_groups"][0][
+            "clean_prompt"
+        ].replace("“你过来。”", "“你走开。”")
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("无法逐字拼回" in error for error in result.errors))
+
+    def test_rejects_missing_action_trigger_in_prompt(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        manifest["shot_groups"][0]["clean_prompt"] = manifest["shot_groups"][0][
+            "clean_prompt"
+        ].replace("李明抬眼看向张三后，", "", 1)
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("语言开始触发" in error for error in result.errors))
+
+    def test_rejects_unapproved_cross_group_language(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        manifest["language_units"][0]["shot_group_ids"] = ["EP001-SG01", "EP001-SG02"]
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("默认不得跨分镜组" in error or "不存在的分镜组" in error for error in result.errors))
+
     def test_rejects_ambiguous_pronoun_outside_dialogue(self):
         manifest = base_manifest("seedance-2.0", 15)
         manifest["shot_groups"][0]["clean_prompt"] = (
-            "李明站在综合训练教室，他突然转身。\n"
-            "【0.0-15.0秒】：中景固定拍摄。"
-            "对话：李明：（平静）朝向张三“张三，你过来。” "
-            "视频严禁出现台词、内心独白与系统语音字幕。"
+            "李明站在金融一班教室，他突然转身。\n"
+            + manifest["shot_groups"][0]["clean_prompt"]
         )
         result = self.validate("seedance-2.0", manifest)
         self.assertFalse(result.ok)
@@ -220,14 +341,86 @@ class ValidatorTests(unittest.TestCase):
 
     def test_allows_pronoun_inside_original_dialogue(self):
         manifest = base_manifest("seedance-2.0", 15)
+        manifest["language_units"][0]["full_text"] = "他没有来。"
+        manifest["language_units"][0]["spoken_duration_seconds"] = 2.4
+        manifest["shot_groups"][0]["shots"][0]["spoken_segments"][0]["text"] = "他没有"
+        manifest["shot_groups"][0]["shots"][1]["spoken_segments"][0]["text"] = "来。"
         manifest["shot_groups"][0]["clean_prompt"] = (
-            "李明站在综合训练教室。\n"
-            "【0.0-15.0秒】：中景固定拍摄。"
-            "对话：李明：（目光稳定）【语气：平静】朝向张三“他没有来。” "
+            manifest["shot_groups"][0]["clean_prompt"]
+            .replace("“张三，”", "“他没有”")
+            .replace("“你过来。”", "“来。”")
+        )
+        result = self.validate("seedance-2.0", manifest)
+        self.assertTrue(result.ok, result.errors)
+
+    def test_rejects_unapproved_long_dialogue_shot(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        group = manifest["shot_groups"][0]
+        group["shots"] = [{
+            "shot_id": "S01",
+            "start_seconds": 0,
+            "end_seconds": 15,
+            "shot_signature": "中景|轴线同侧|整段对话",
+            "purpose": "整段对话",
+            "existence_reason": "错误地合并全部镜头",
+            "spoken_segments": [
+                deepcopy(manifest["shot_groups"][0]["shots"][0]["spoken_segments"][0]),
+                deepcopy(manifest["shot_groups"][0]["shots"][1]["spoken_segments"][0]),
+            ],
+        }]
+        group["clean_prompt"] = (
+            "【全局固定画质参数】\n测试项目统一画质与画幅。\n"
+            "【全局通用负面提示词】\n禁止字幕、背景音乐和画面漂移。\n"
+            "李明=李明音色=\n张三=\n金融一班教室=\n"
+            "【摄影机运动总设定】\n对话轴线稳定。\n"
+            "【0-15秒】：中景承载整段对话。李明抬眼看向张三后，李明开始说：“张三，”"
+            "切到张三反应镜头时，李明无停顿承接上一镜继续说：“你过来。” "
+            "视频严禁出现台词、内心独白与系统语音字幕。"
+        )
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("单镜6秒上限" in error for error in result.errors))
+
+    def test_allows_explicitly_approved_long_take(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        group = manifest["shot_groups"][0]
+        group["shots"] = [{
+            "shot_id": "S01",
+            "start_seconds": 0,
+            "end_seconds": 15,
+            "shot_signature": "中景|轴线同侧|批准长镜头",
+            "purpose": "用户明确要求的一镜到底",
+            "existence_reason": "保持不中断的压迫感",
+            "spoken_segments": [
+                deepcopy(manifest["shot_groups"][0]["shots"][0]["spoken_segments"][0]),
+                deepcopy(manifest["shot_groups"][0]["shots"][1]["spoken_segments"][0]),
+            ],
+            "long_take_approved": True,
+            "long_take_reason": "用户明确要求一镜到底，并设计持续走位与焦点变化",
+        }]
+        group["clean_prompt"] = (
+            "【全局固定画质参数】\n测试项目统一画质与画幅。\n"
+            "【全局通用负面提示词】\n禁止字幕、背景音乐和画面漂移。\n"
+            "李明=李明音色=\n张三=\n金融一班教室=\n"
+            "【摄影机运动总设定】\n对话轴线稳定。\n"
+            "【0-15秒】：用户明确批准的一镜到底，人物持续走位且摄影机持续变焦。"
+            "李明抬眼看向张三后，李明开始说：“张三，”"
+            "切到张三反应镜头时，李明无停顿承接上一镜继续说：“你过来。” "
             "视频严禁出现台词、内心独白与系统语音字幕。"
         )
         result = self.validate("seedance-2.0", manifest)
         self.assertTrue(result.ok, result.errors)
+
+    def test_rejects_prompt_collapsing_registered_shots(self):
+        manifest = base_manifest("seedance-2.0", 15)
+        manifest["shot_groups"][0]["clean_prompt"] = (
+            "【0-15秒】：错误地把三个镜头合成一个长镜头。"
+            "对话：李明：（平静）朝向张三“张三，你过来。” "
+            "视频严禁出现台词、内心独白与系统语音字幕。"
+        )
+        result = self.validate("seedance-2.0", manifest)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("禁止把多个镜头合并" in error for error in result.errors))
 
     def test_rejects_episode_over_180_seconds(self):
         manifest = base_manifest("seedance-2.0", 15)
@@ -261,8 +454,8 @@ class ValidatorTests(unittest.TestCase):
     def test_rejects_shot_timeline_gap(self):
         manifest = base_manifest("seedance-2.0", 15)
         manifest["shot_groups"][0]["shots"] = [
-            {"shot_id": "S01", "start_seconds": 0, "end_seconds": 5, "purpose": "建立空间"},
-            {"shot_id": "S02", "start_seconds": 6, "end_seconds": 15, "purpose": "完成事件"},
+            {"shot_id": "S01", "start_seconds": 0, "end_seconds": 5, "purpose": "建立空间", "existence_reason": "建立方向"},
+            {"shot_id": "S02", "start_seconds": 6, "end_seconds": 15, "purpose": "完成事件", "existence_reason": "完成落点"},
         ]
         result = self.validate("seedance-2.0", manifest)
         self.assertFalse(result.ok)

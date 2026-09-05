@@ -1,0 +1,6 @@
+interface:
+  display_name: "人物表演资产库"
+  short_description: "把原文台词转换为人物目标、策略、听者反应和连续表演节拍"
+  default_prompt: "使用 $ai-character-performance-assets 分析这段已锁定剧本的人物目标、策略变化、听者反应和逐镜表演，不改写原文台词。"
+policy:
+  allow_implicit_invocation: true

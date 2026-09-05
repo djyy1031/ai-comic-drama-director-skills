@@ -18,12 +18,12 @@ SPEC.loader.exec_module(MODULE)
 class AssetFolderLinkTests(unittest.TestCase):
     def test_matches_named_assets_without_marking_ready(self):
         assets = [
-            {"asset_id": "A1", "canonical_name": "林舟", "asset_type": "CHARACTER", "status": "PENDING"},
-            {"asset_id": "A2", "canonical_name": "综合训练教室", "asset_type": "SCENE", "status": "PENDING"},
+            {"asset_id": "A1", "canonical_name": "顾平生", "asset_type": "CHARACTER", "status": "PENDING"},
+            {"asset_id": "A2", "canonical_name": "金融一班教室", "asset_type": "SCENE", "status": "PENDING"},
         ]
         with tempfile.TemporaryDirectory() as temp:
             folder = Path(temp)
-            (folder / "林舟_角色设定.png").write_bytes(b"image")
+            (folder / "顾平生_角色设定.png").write_bytes(b"image")
             (folder / "未识别图片.png").write_bytes(b"image")
             files = MODULE.scan_files(folder)
             queue, unmatched = MODULE.match_assets(assets, files)
@@ -34,11 +34,11 @@ class AssetFolderLinkTests(unittest.TestCase):
             self.assertEqual(len(unmatched), 1)
 
     def test_multiple_candidates_require_review(self):
-        assets = [{"asset_id": "A1", "canonical_name": "林舟", "asset_type": "CHARACTER"}]
+        assets = [{"asset_id": "A1", "canonical_name": "顾平生", "asset_type": "CHARACTER"}]
         with tempfile.TemporaryDirectory() as temp:
             folder = Path(temp)
-            (folder / "林舟_正面.png").write_bytes(b"image")
-            (folder / "林舟_侧面.png").write_bytes(b"image")
+            (folder / "顾平生_正面.png").write_bytes(b"image")
+            (folder / "顾平生_侧面.png").write_bytes(b"image")
             queue, _ = MODULE.match_assets(assets, MODULE.scan_files(folder))
             self.assertEqual(queue[0]["match_status"], "多候选")
             self.assertFalse(queue[0]["may_mark_ready"])

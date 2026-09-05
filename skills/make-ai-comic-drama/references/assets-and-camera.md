@@ -5,7 +5,7 @@
 资产同时保留：
 
 - `asset_id`：机器内部稳定去重键，可使用短ID。
-- `canonical_name`：原文标准名称，供用户、表格和视频模型使用。
+- `canonical_name`：原文标准名称，供 Patrick、表格和视频模型使用。
 
 纯净视频提示词只使用 `canonical_name`，不把内部ID、UUID、文件路径或“参考图1”写给视频模型。
 

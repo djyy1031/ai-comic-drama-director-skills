@@ -8,6 +8,9 @@ from typing import Any
 from _validation_common import Issue, is_number, issue, run_cli
 
 
+DEFAULT_MAX_SHOT_SECONDS = 6.0
+
+
 def validate(data: dict[str, Any]) -> list[Issue]:
     issues: list[Issue] = []
     shots = data.get("shots", [])
@@ -32,6 +35,18 @@ def validate(data: dict[str, Any]) -> list[Issue]:
             issues.append(issue("error", "timeline.bounds", "开始秒数不能小于 0，结束秒数必须大于开始秒数，持续时长必须大于 0。", path))
         if abs((end - start) - duration) > tolerance:
             issues.append(issue("error", "timeline.duration_mismatch", f"填写的持续时长 {duration} 秒，与结束减开始得到的 {end-start:.6f} 秒不一致。", path))
+        if duration > DEFAULT_MAX_SHOT_SECONDS:
+            approved = shot.get("long_take_approved") is True
+            reason = str(shot.get("long_take_reason") or "").strip()
+            if not approved or not reason:
+                issues.append(
+                    issue(
+                        "error",
+                        "timeline.long_shot_unapproved",
+                        f"单镜时长 {duration} 秒超过普通镜头6秒上限；只有用户或原文明示一镜到底时，才能同时填写long_take_approved=true和long_take_reason。",
+                        path,
+                    )
+                )
         dialogue_duration = shot.get("dialogue_duration")
         if dialogue_duration is not None and (not is_number(dialogue_duration) or dialogue_duration < 0 or dialogue_duration - duration > tolerance):
             issues.append(issue("error", "timeline.dialogue_overflow", "实测对白时长不能小于 0，也不能超过镜头能容纳的时长。", path))

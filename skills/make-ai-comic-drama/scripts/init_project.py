@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--render-mode", required=True, help="必须明确，例如2D或3D。")
     parser.add_argument("--aspect-ratio", required=True, help="必须明确，例如9:16或16:9。")
     parser.add_argument("--visual-style", required=True, help="必须填写可执行的项目统一视觉风格。")
+    parser.add_argument("--global-prompt-profile", required=True, help="必须填写已锁定的全局控制提示词版本。")
     parser.add_argument("--genre", default="", help="项目主类型。")
     return parser.parse_args()
 
@@ -73,6 +74,9 @@ def initialize(args: argparse.Namespace) -> Path:
         raise ValueError("aspect_ratio必须是明确比例，例如9:16或16:9。")
     if not str(args.visual_style).strip():
         raise ValueError("visual_style不能为空，必须先确认统一美术风格。")
+    global_prompt_profile = str(getattr(args, "global_prompt_profile", "") or "").strip()
+    if not global_prompt_profile:
+        raise ValueError("global_prompt_profile不能为空，必须先锁定全局控制提示词版本。")
     parent = Path(args.path).expanduser().resolve()
     target = (parent / args.name).resolve()
 
@@ -86,12 +90,13 @@ def initialize(args: argparse.Namespace) -> Path:
         (target / relative).mkdir(parents=True, exist_ok=True)
 
     config = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "project_name": args.name,
         "model_profile": args.model_profile,
         "render_mode": args.render_mode,
         "aspect_ratio": args.aspect_ratio,
         "visual_style": args.visual_style,
+        "global_prompt_profile": global_prompt_profile,
         "genre": {"primary": args.genre, "packs": []},
         "director_knowledge": {
             "preferred_skill": "ai-cinematic-directing-assets",
@@ -106,7 +111,7 @@ def initialize(args: argparse.Namespace) -> Path:
         },
     }
     status = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "project_name": args.name,
         "model_profile": args.model_profile,
         "current_stage": "PROJECT_INITIALIZED",

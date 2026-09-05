@@ -1,0 +1,6 @@
+interface:
+  display_name: "镜头执行与连续性检查库"
+  short_description: "检查第一帧、站位、视线、道具手、光线、物理与切镜状态"
+  default_prompt: "使用 $ai-shot-execution-continuity 检查这组镜头的第一帧、站位、朝向、视线、道具手、光线、物理和切镜连续性。"
+policy:
+  allow_implicit_invocation: true

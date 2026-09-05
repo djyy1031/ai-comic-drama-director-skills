@@ -129,7 +129,7 @@ styleDataSheet(
   [15, 22, 14, 12, 24, 15, 12, 14, 18, 16, 42],
   "MasterAssetTable",
 );
-master.getRange("A3:K3").values = [["CHAR-LZ", "林舟", "CHARACTER", "BASE", "主要角色", "GLOBAL", 3, "PENDING", "原创", "CONFIRMED", "示例行，可替换"]];
+master.getRange("A3:K3").values = [["CHAR-LM", "李明", "CHARACTER", "BASE", "主要角色", "GLOBAL", 3, "PENDING", "原创", "CONFIRMED", "示例行，可替换"]];
 master.getRange("G3:G52").dataValidation = { rule: { type: "whole", operator: "between", formula1: 0, formula2: 3 } };
 master.getRange("H3:H52").dataValidation = { rule: { type: "list", values: ["PENDING", "IN_PROGRESS", "READY", "BLOCKED", "STALE"] } };
 addStatusFormatting(master, "H3:H52");
@@ -141,7 +141,7 @@ styleDataSheet(
   [22, 18, 23, 23, 13, 18, 22, 12, 14, 38],
   "SceneCameraTable",
 );
-cameras.getRange("A3:J3").values = [["综合训练教室", "讲台向后排", "讲台中央前缘", "面向教室最后排", "胸口高度", "中景", "EP001-SG01", 3, "PENDING", "门窗、课桌、过道与母场景一致"]];
+cameras.getRange("A3:J3").values = [["金融一班教室", "讲台向后排", "讲台中央前缘", "面向教室最后排", "胸口高度", "中景", "EP001-SG01", 3, "PENDING", "门窗、课桌、过道与母场景一致"]];
 cameras.getRange("H3:H52").dataValidation = { rule: { type: "whole", operator: "between", formula1: 0, formula2: 3 } };
 cameras.getRange("I3:I52").dataValidation = { rule: { type: "list", values: ["PENDING", "IN_PROGRESS", "READY", "BLOCKED", "STALE"] } };
 addStatusFormatting(cameras, "I3:I52");
@@ -153,7 +153,7 @@ styleDataSheet(
   [10, 15, 17, 11, 23, 22, 23, 20, 20, 20, 26, 24, 15],
   "ShotGroupAssetTable",
 );
-matrix.getRange("A3:M3").values = [[1, "EP001-SG01", "seedance-2.0", 15, "林舟、苏澄", "日常服/正常", "综合训练教室", "讲台向后排", "练习长剑", "无", "双人站位参考", "教室环境底噪", "PENDING"]];
+matrix.getRange("A3:M3").values = [[1, "EP001-SG01", "seedance-2.0", 15, "李明、张三", "日常服/正常", "金融一班教室", "讲台向后排", "黄金剑", "无", "双人站位参考", "教室环境底噪", "PENDING"]];
 matrix.getRange("C3:C52").dataValidation = { rule: { type: "list", values: ["seedance-2.0", "seedance-2.5"] } };
 matrix.getRange("M3:M52").dataValidation = { rule: { type: "list", values: ["PENDING", "READY", "BLOCKED", "STALE"] } };
 addStatusFormatting(matrix, "M3:M52");
@@ -165,7 +165,7 @@ styleDataSheet(
   [16, 10, 15, 20, 24, 28, 12, 28, 14, 45],
   "SubAssetTable",
 );
-subAssets.getRange("A3:J3").values = [["SUB-EP001-SG01-01", 1, "EP001-SG01", "BLOCKING", "林舟与苏澄双人站位", "锁定两人距离与朝向", 3, "林舟、苏澄、综合训练教室", "PENDING", "示例行，可替换"]];
+subAssets.getRange("A3:J3").values = [["SUB-EP001-SG01-01", 1, "EP001-SG01", "BLOCKING", "李明与张三双人站位", "锁定两人距离与朝向", 3, "李明、张三、金融一班教室", "PENDING", "示例行，可替换"]];
 subAssets.getRange("D3:D52").dataValidation = { rule: { type: "list", values: ["BLOCKING", "SEATING", "POSE", "CHARACTER_PROP", "EXPRESSION", "INTERACTION", "START_FRAME", "END_FRAME"] } };
 subAssets.getRange("G3:G52").dataValidation = { rule: { type: "whole", operator: "between", formula1: 0, formula2: 3 } };
 subAssets.getRange("I3:I52").dataValidation = { rule: { type: "list", values: ["PENDING", "IN_PROGRESS", "READY", "BLOCKED", "STALE"] } };

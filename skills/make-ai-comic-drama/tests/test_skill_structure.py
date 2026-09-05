@@ -73,6 +73,8 @@ class SkillStructureTests(unittest.TestCase):
             "references/model-seedance-2.0.md",
             "references/model-seedance-2.5.md",
             "references/global-3d-prompt.md",
+            "references/global-live-action-period-prompt.md",
+            "references/prompt-only-storyboard-delivery.md",
             "references/action-direction.md",
             "references/directing-asset-library.json",
             "references/director-routing.md",
@@ -82,6 +84,7 @@ class SkillStructureTests(unittest.TestCase):
             "references/examples/continuity-and-assets.md",
             "scripts/init_project.py",
             "scripts/validate_project.py",
+            "scripts/validate_prompt_only_markdown.py",
             "assets/AI漫剧生产信息表模板.xlsx",
             "assets/动作特效资产库模板.json",
             "assets/project-config.seedance-2.0.template.json",
@@ -134,10 +137,16 @@ class SkillStructureTests(unittest.TestCase):
         workflow = (SKILL_ROOT / "references/workflow.md").read_text(encoding="utf-8")
         contract = (SKILL_ROOT / "references/data-contract.md").read_text(encoding="utf-8")
         self.assertIn("$ai-cinematic-directing-assets", skill)
+        self.assertIn("$ai-character-performance-assets", skill)
+        self.assertIn("$ai-shot-execution-continuity", skill)
         self.assertIn("中性“导演镜头表示”", skill)
         self.assertIn("FALLBACK_INTERNAL", routing)
+        self.assertIn("PERFORMANCE_PLAN_READY", workflow)
+        self.assertIn("SHOT_EXECUTION_CHECK_PASS", workflow)
         self.assertIn("DIRECTOR_INTENT_READY", workflow)
         self.assertIn("director_representations", contract)
+        self.assertIn("performance_plans", contract)
+        self.assertIn("execution_reports", contract)
 
     def test_model_templates_are_isolated(self):
         s20 = (SKILL_ROOT / "assets/project-config.seedance-2.0.template.json").read_text(encoding="utf-8")
@@ -158,11 +167,29 @@ class SkillStructureTests(unittest.TestCase):
 
     def test_3d_prompt_binding_order_and_natural_episode_duration(self):
         prompt_format = (SKILL_ROOT / "references/prompt-format.md").read_text(encoding="utf-8")
-        binding_position = prompt_format.index("林舟=林舟音色=")
+        binding_position = prompt_format.index("顾平生=顾平生音色=")
         camera_position = prompt_format.index("【摄影机运动总设定】", binding_position)
         self.assertLess(binding_position, camera_position)
         self.assertIn("资产绑定区位于全局通用负面提示词之后", prompt_format)
         self.assertIn("不添加额外标题", prompt_format)
+        self.assertIn("即使当前只交付分镜提示词、不运行资产清单流程", prompt_format)
+        self.assertIn("无停顿承接上一镜继续说", prompt_format)
+        self.assertNotIn("【连续对白音轨总设定】", prompt_format)
+
+        skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn('version: "2.7.0"', skill)
+        self.assertIn("动作触发", skill)
+
+    def test_prompt_only_delivery_mode_is_complete(self):
+        skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        delivery = (SKILL_ROOT / "references/prompt-only-storyboard-delivery.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("STORYBOARD_PROMPTS_ONLY", skill)
+        self.assertIn("只交付一份最终 Markdown 分镜提示词文档", skill)
+        self.assertIn("validate_prompt_only_markdown.py", skill)
+        self.assertIn("人物表演资产库 → AI影视导演语言资产库 → 镜头执行与连续性检查库", delivery)
+        self.assertIn("不得附加资产列表", skill)
 
         for model in ("seedance-2.0", "seedance-2.5"):
             config = (SKILL_ROOT / f"assets/project-config.{model}.template.json").read_text(

@@ -12,7 +12,12 @@ class SkillStructureTests(unittest.TestCase):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertTrue(text.startswith("---\n"))
         self.assertIn("name: ai-cinematic-directing-assets", text)
-        self.assertIn('version: "1.0.0"', text)
+        self.assertIn('version: "1.3.0"', text)
+        self.assertIn("动作触发开口", text)
+        self.assertIn("$ai-character-performance-assets", text)
+        self.assertIn("$ai-shot-execution-continuity", text)
+        self.assertIn("所有画面内人物", text)
+        self.assertIn("禁止木站", text)
         interface = (ROOT / "agents/openai.yaml").read_text(encoding="utf-8")
         self.assertIn("AI影视导演语言资产库", interface)
         self.assertIn("allow_implicit_invocation: true", interface)
@@ -67,7 +72,8 @@ class SkillStructureTests(unittest.TestCase):
     def test_no_fixed_shot_count_or_duration_filling(self):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("不给固定镜头数量", skill)
-        self.assertIn("不机械拆开", skill)
+        self.assertIn("不按固定字数或标点机械切分", skill)
+        self.assertIn("禁止把整段对白直接包装成一个", skill)
         self.assertIn("为什么存在", skill)
 
 
