@@ -3,6 +3,9 @@
   "episode": 1,
   "model_profile": "seedance-2.5",
   "planned_final_duration_seconds": 25,
+  "duration_planning_reason": "填写本集剧情密度与项目软目标的平衡依据",
+  "duration_deviation_reason": "模板仅示范单组；正式单集低于90秒时必须说明",
+  "shot_group_count_exception_reason": null,
   "timeline_overhead_seconds": 0,
   "final_duration_seconds": null,
   "language_units": [],
@@ -23,13 +26,14 @@
         "screen_coordinates": "填写当前机位画面位置"
       },
       "shots": [
-        {"shot_id": "S01", "start_seconds": 0, "end_seconds": 4, "shot_signature": "中景|轴线同侧|关系建立", "purpose": "建立人物关系或空间", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
-        {"shot_id": "S02", "start_seconds": 4, "end_seconds": 8, "shot_signature": "过肩中近景|轴线同侧|第一事件", "purpose": "推进第一事件节点", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
-        {"shot_id": "S03", "start_seconds": 8, "end_seconds": 12, "shot_signature": "近景|轴线同侧|听者反应", "purpose": "承接动作、信息或听者反应", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
-        {"shot_id": "S04", "start_seconds": 12, "end_seconds": 16, "shot_signature": "双人中景|轴线同侧|关系变化", "purpose": "推进关系或冲突变化", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
-        {"shot_id": "S05", "start_seconds": 16, "end_seconds": 21, "shot_signature": "近景|轴线同侧|关键转折", "purpose": "完成关键转折", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
-        {"shot_id": "S06", "start_seconds": 21, "end_seconds": 25, "shot_signature": "中景|轴线同侧|事件落点", "purpose": "完成事件与结束状态", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []}
+        {"shot_id": "S01", "start_seconds": 0, "end_seconds": 4, "primary_subject": "填写主体", "framing": "中景", "shot_signature": "中景|轴线同侧|关系建立", "purpose": "建立人物关系或空间", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
+        {"shot_id": "S02", "start_seconds": 4, "end_seconds": 8, "primary_subject": "填写主体", "framing": "过肩中近景", "shot_signature": "过肩中近景|轴线同侧|第一事件", "purpose": "推进第一事件节点", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
+        {"shot_id": "S03", "start_seconds": 8, "end_seconds": 12, "primary_subject": "填写听者", "framing": "近景", "shot_signature": "近景|轴线同侧|听者反应", "purpose": "承接动作、信息或听者反应", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
+        {"shot_id": "S04", "start_seconds": 12, "end_seconds": 16, "primary_subject": "填写双人", "framing": "双人中景", "shot_signature": "双人中景|轴线同侧|关系变化", "purpose": "推进关系或冲突变化", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
+        {"shot_id": "S05", "start_seconds": 16, "end_seconds": 21, "primary_subject": "填写主体", "framing": "近景", "shot_signature": "近景|轴线同侧|关键转折", "purpose": "完成关键转折", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []},
+        {"shot_id": "S06", "start_seconds": 21, "end_seconds": 25, "primary_subject": "填写主体", "framing": "中景", "shot_signature": "中景|轴线同侧|事件落点", "purpose": "完成事件与结束状态，并在非末组写明转场到下一组", "existence_reason": "说明这个镜头为什么不可删除", "spoken_segments": []}
       ],
+      "exit_transition": null,
       "prompt_asset_bindings": [],
       "assets": [],
       "clean_prompt": "填写纯净视频提示词"

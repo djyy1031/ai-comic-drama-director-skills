@@ -106,6 +106,59 @@ class ValidatorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("未通过", result.stdout)
 
+    def test_group_transition_tail_must_match_last_shot(self):
+        data = json.loads(TEMPLATE.read_text(encoding="utf-8"))
+        data["场景诊断"]["主场景类型"] = "对话与关系"
+        data["场景诊断"]["主要剧情功能"] = "改变关系"
+        data["场景诊断"]["情绪轨迹"] = "克制到坚定"
+        data["镜头设计"][0]["镜头功能"] = "建立关系"
+        data["镜头设计"][0]["存在理由"] = "明确两人距离"
+        data["组间转场设计"]["前组尾镜签名"] = "错误签名"
+        result = self.run_validator(data)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("必须匹配本组最后一镜", result.stdout)
+
+    def test_rejects_same_character_closeup_across_groups(self):
+        data = json.loads(TEMPLATE.read_text(encoding="utf-8"))
+        data["场景诊断"]["主场景类型"] = "对话与关系"
+        data["场景诊断"]["主要剧情功能"] = "改变关系"
+        data["场景诊断"]["情绪轨迹"] = "克制到坚定"
+        shot = data["镜头设计"][0]
+        shot["镜头功能"] = "情绪落点"
+        shot["存在理由"] = "建立下一组反应动机"
+        shot["主视觉主体"] = "张三"
+        shot["镜头签名"] = "张三脸部特写|正面|沉默"
+        shot["摄影机"]["景别"] = "脸部特写"
+        transition = data["组间转场设计"]
+        transition.update({
+            "前组尾镜签名": shot["镜头签名"],
+            "前组尾镜主体": "张三",
+            "前组尾镜景别": "脸部特写",
+            "后组首镜建议签名": "张三眼部特写|侧面|抬眼",
+            "后组首镜建议主体": "张三",
+            "后组首镜建议景别": "眼部特写",
+        })
+        result = self.run_validator(data)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("同一人物特写不能直接衔接", result.stdout)
+
+    def test_allows_subject_change_across_groups(self):
+        data = json.loads(TEMPLATE.read_text(encoding="utf-8"))
+        data["场景诊断"]["主场景类型"] = "对话与关系"
+        data["场景诊断"]["主要剧情功能"] = "改变关系"
+        data["场景诊断"]["情绪轨迹"] = "克制到坚定"
+        shot = data["镜头设计"][0]
+        shot["镜头功能"] = "情绪落点"
+        shot["存在理由"] = "建立下一组反应动机"
+        transition = data["组间转场设计"]
+        transition.update({
+            "前组尾镜签名": shot["镜头签名"],
+            "前组尾镜主体": shot["主视觉主体"],
+            "前组尾镜景别": shot["摄影机"]["景别"],
+        })
+        result = self.run_validator(data)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

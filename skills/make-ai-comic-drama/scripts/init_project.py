@@ -102,7 +102,14 @@ def initialize(args: argparse.Namespace) -> Path:
             "preferred_skill": "ai-cinematic-directing-assets",
             "allow_internal_fallback": True,
         },
-        "episode": {"target_seconds": None, "final_max_seconds": 180},
+        "episode": {
+            "target_seconds": None,
+            "normal_min_seconds": 90,
+            "final_max_seconds": 180,
+            "adaptive_to_script": True,
+            "preferred_max_shot_groups": 6,
+            "seedance_2_5_preferred_group_seconds": 30,
+        },
         "subtitle_policy": {
             "generate_dialogue_subtitles": False,
             "append_to_each_language_shot": True,

@@ -1,0 +1,6 @@
+interface:
+  display_name: "分镜资产接入与空间锚定库"
+  short_description: "核验成品资产并锁定分镜所需身份、空间与声音"
+  default_prompt: "使用 $ai-storyboard-asset-grounding，查看我已完成的场景、角色、道具和声音资产，为剧本建立可供分镜调用的资产锚定包。"
+policy:
+  allow_implicit_invocation: true

@@ -32,7 +32,14 @@ def base_config(model: str) -> dict:
         "visual_style": "2D国漫",
         "global_prompt_profile": "TEST_GLOBAL_V1",
         "genre": {"primary": "校园", "packs": []},
-        "episode": {"target_seconds": None, "final_max_seconds": 180},
+        "episode": {
+            "target_seconds": None,
+            "normal_min_seconds": 90,
+            "final_max_seconds": 180,
+            "adaptive_to_script": True,
+            "preferred_max_shot_groups": 6,
+            "seedance_2_5_preferred_group_seconds": 30,
+        },
         "subtitle_policy": {
             "generate_dialogue_subtitles": False,
             "append_to_each_language_shot": True,
@@ -91,6 +98,8 @@ def base_manifest(model: str, duration: float, exception: str | None = None) -> 
                 "shot_id": f"S{index:02d}",
                 "start_seconds": start,
                 "end_seconds": end,
+                "primary_subject": "李明" if index % 2 else "张三",
+                "framing": "中景" if index % 2 else "近景",
                 "shot_signature": f"镜头{index}|轴线同侧|测试主体",
                 "purpose": "推进对话与人物反应",
                 "existence_reason": "保持正常对话镜头节拍",
@@ -113,6 +122,9 @@ def base_manifest(model: str, duration: float, exception: str | None = None) -> 
         "episode": 1,
         "model_profile": model,
         "planned_final_duration_seconds": duration,
+        "duration_planning_reason": "单元测试按剧本信息量规划",
+        "duration_deviation_reason": "单元测试使用低于90秒的最小样例" if duration < 90 else None,
+        "shot_group_count_exception_reason": None,
         "timeline_overhead_seconds": 0,
         "final_duration_seconds": duration,
         "language_units": [{
@@ -141,6 +153,7 @@ def base_manifest(model: str, duration: float, exception: str | None = None) -> 
                     "screen_coordinates": "李明在画面左前景，张三在画面右后景",
                 },
                 "shots": shots,
+                "exit_transition": None,
                 "prompt_asset_bindings": ["李明=李明音色=", "张三=", "金融一班教室="],
                 "assets": [
                     {
@@ -360,6 +373,8 @@ class ValidatorTests(unittest.TestCase):
             "shot_id": "S01",
             "start_seconds": 0,
             "end_seconds": 15,
+            "primary_subject": "李明",
+            "framing": "中景",
             "shot_signature": "中景|轴线同侧|整段对话",
             "purpose": "整段对话",
             "existence_reason": "错误地合并全部镜头",
@@ -388,6 +403,8 @@ class ValidatorTests(unittest.TestCase):
             "shot_id": "S01",
             "start_seconds": 0,
             "end_seconds": 15,
+            "primary_subject": "李明",
+            "framing": "中景",
             "shot_signature": "中景|轴线同侧|批准长镜头",
             "purpose": "用户明确要求的一镜到底",
             "existence_reason": "保持不中断的压迫感",
@@ -429,6 +446,74 @@ class ValidatorTests(unittest.TestCase):
         result = self.validate("seedance-2.0", manifest)
         self.assertFalse(result.ok)
         self.assertTrue(any("不超过180" in error for error in result.errors))
+
+    def test_rejects_same_character_closeup_across_groups(self):
+        groups = [
+            {
+                "shot_group_id": "EP001-SG01",
+                "duration_seconds": 30,
+                "duration_exception_reason": None,
+                "scene_name": "堂屋",
+                "shots": [{"shot_signature": "张三特写|正面", "primary_subject": "张三", "framing": "脸部特写"}],
+                "clean_prompt": "末镜结束。转场到下一组：改换机位。",
+                "exit_transition": {
+                    "to_group_id": "EP001-SG02",
+                    "from_shot_signature": "张三特写|正面",
+                    "from_primary_subject": "张三",
+                    "from_framing": "脸部特写",
+                    "to_shot_signature": "张三特写|侧面",
+                    "to_primary_subject": "张三",
+                    "to_framing": "脸部特写",
+                    "transition_method": "直接切换",
+                    "continuity_anchor": "张三视线",
+                },
+            },
+            {
+                "shot_group_id": "EP001-SG02",
+                "duration_seconds": 30,
+                "scene_name": "堂屋",
+                "shots": [{"shot_signature": "张三特写|侧面", "primary_subject": "张三", "framing": "脸部特写"}],
+                "clean_prompt": "下一组。",
+                "exit_transition": None,
+            },
+        ]
+        result = VALIDATOR.Result()
+        VALIDATOR.validate_group_transitions(Path("episode.json"), groups, "seedance-2.5", result)
+        self.assertTrue(any("同一人物特写硬接" in error for error in result.errors))
+
+    def test_accepts_subject_change_across_groups(self):
+        groups = [
+            {
+                "shot_group_id": "EP001-SG01",
+                "duration_seconds": 30,
+                "duration_exception_reason": None,
+                "scene_name": "堂屋",
+                "shots": [{"shot_signature": "张三特写|正面", "primary_subject": "张三", "framing": "脸部特写"}],
+                "clean_prompt": "末镜结束。转场到下一组：沿张三视线切到李四中景。",
+                "exit_transition": {
+                    "to_group_id": "EP001-SG02",
+                    "from_shot_signature": "张三特写|正面",
+                    "from_primary_subject": "张三",
+                    "from_framing": "脸部特写",
+                    "to_shot_signature": "李四中景|反应",
+                    "to_primary_subject": "李四",
+                    "to_framing": "中景",
+                    "transition_method": "视线匹配",
+                    "continuity_anchor": "张三视线落向李四，李四吸气反应",
+                },
+            },
+            {
+                "shot_group_id": "EP001-SG02",
+                "duration_seconds": 30,
+                "scene_name": "堂屋",
+                "shots": [{"shot_signature": "李四中景|反应", "primary_subject": "李四", "framing": "中景"}],
+                "clean_prompt": "下一组。",
+                "exit_transition": None,
+            },
+        ]
+        result = VALIDATOR.Result()
+        VALIDATOR.validate_group_transitions(Path("episode.json"), groups, "seedance-2.5", result)
+        self.assertEqual(result.errors, [])
 
     def test_production_requires_mandatory_assets_ready(self):
         manifest = base_manifest("seedance-2.0", 15)

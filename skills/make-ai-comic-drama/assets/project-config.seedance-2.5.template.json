@@ -11,7 +11,14 @@
     "preferred_skill": "ai-cinematic-directing-assets",
     "allow_internal_fallback": true
   },
-  "episode": {"target_seconds": null, "final_max_seconds": 180},
+  "episode": {
+    "target_seconds": null,
+    "normal_min_seconds": 90,
+    "final_max_seconds": 180,
+    "adaptive_to_script": true,
+    "preferred_max_shot_groups": 6,
+    "seedance_2_5_preferred_group_seconds": 30
+  },
   "subtitle_policy": {
     "generate_dialogue_subtitles": false,
     "append_to_each_language_shot": true,

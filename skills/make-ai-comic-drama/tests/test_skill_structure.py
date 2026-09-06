@@ -177,7 +177,7 @@ class SkillStructureTests(unittest.TestCase):
         self.assertNotIn("【连续对白音轨总设定】", prompt_format)
 
         skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn('version: "2.7.0"', skill)
+        self.assertIn('version: "2.9.0"', skill)
         self.assertIn("动作触发", skill)
 
     def test_prompt_only_delivery_mode_is_complete(self):
@@ -189,6 +189,8 @@ class SkillStructureTests(unittest.TestCase):
         self.assertIn("只交付一份最终 Markdown 分镜提示词文档", skill)
         self.assertIn("validate_prompt_only_markdown.py", skill)
         self.assertIn("人物表演资产库 → AI影视导演语言资产库 → 镜头执行与连续性检查库", delivery)
+        self.assertIn("分镜资产接入与空间锚定库", delivery)
+        self.assertTrue((SKILL_ROOT / "references/prepared-asset-grounding.md").exists())
         self.assertIn("不得附加资产列表", skill)
 
         for model in ("seedance-2.0", "seedance-2.5"):
@@ -196,6 +198,9 @@ class SkillStructureTests(unittest.TestCase):
                 encoding="utf-8"
             )
             self.assertIn('"target_seconds": null', config)
+            self.assertIn('"normal_min_seconds": 90', config)
+            self.assertIn('"preferred_max_shot_groups": 6', config)
+            self.assertIn('"seedance_2_5_preferred_group_seconds": 30', config)
 
 
 if __name__ == "__main__":

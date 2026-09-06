@@ -15,6 +15,9 @@ def shot(shot_id, screen_side, segments=None):
     return {
         "镜头ID": shot_id,
         "时长秒": 3,
+        "主视觉主体": "张三" if shot_id == "镜头一" else "李四",
+        "景别": "中景",
+        "镜头签名": f"{shot_id}|中景|{screen_side}",
         "活动实体": ["张三", "李四", "账本", "客栈大厅"],
         "画面内人物": ["张三", "李四"],
         "第一帧": {"有效主体": "张三与李四", "动作状态": "两人已经隔桌对峙", "空间关系可读": True, "画面目的": "建立质询关系"},
@@ -39,7 +42,7 @@ def valid_payload():
     first = shot("镜头一", "画面左侧", [{"语言单元ID": "对白一", "片段顺序": 1, "原文片段": "你为什么", "开始方式": "动作触发开始", "开始触发": "张三放下账本后", "语言时长秒": 1.1, "时长依据": "ACTUAL_READ", "口型状态": "张三现场口型同步", "连续要求": "切镜不重启"}])
     second = shot("镜头二", "画面左侧", [{"语言单元ID": "对白一", "片段顺序": 2, "原文片段": "骗我？", "开始方式": "无停顿承接", "开始触发": "切到李四反应镜头时", "语言时长秒": 1.1, "时长依据": "ACTUAL_READ", "口型状态": "张三画外连续声", "连续要求": "同一口气继续"}])
     return {
-        "规范版本": "1.0",
+        "规范版本": "1.3",
         "来源锚点": {"集": 1, "场": "1-1", "分镜组": "第一组"},
         "不可修改剧情事实": ["张三质问李四"],
         "不可修改原文台词": [{"说话人": "张三", "原文": "你为什么骗我？"}],
@@ -50,6 +53,7 @@ def valid_payload():
         "语言单元": [{"语言单元ID": "对白一", "类型": "对白", "说话人": "张三", "完整原文": "你为什么骗我？", "所属分镜组": "第一组", "默认不跨组": True, "连续要求": "切镜不重启、无停顿承接"}],
         "单镜检查": [first, second],
         "切镜连续性": [{"前镜": "镜头一", "后镜": "镜头二", "人物继承": "位置和朝向一致", "道具继承": "账本仍在张三右手下", "环境继承": "柜台状态一致", "轴线与屏幕方向": "保持轴线南侧", "光线继承": "东窗日光方向一致", "语言承接": "对白一无停顿承接", "问题": [], "状态": "PASS"}],
+        "跨分镜组检查": {"是否末组": True, "下一组": "", "前组尾镜签名": "", "前组尾镜主体": "", "前组尾镜景别": "", "后组首镜签名": "", "后组首镜主体": "", "后组首镜景别": "", "转场方法": "", "连续锚点": "", "匹配剪辑明确批准": False, "匹配剪辑理由": "", "可见匹配依据": "", "问题": [], "状态": "PASS"},
         "最终裁决": {"状态": "PASS", "问题": [], "最早返修位置": "无"},
     }
 
@@ -64,7 +68,8 @@ class SkillTests(unittest.TestCase):
     def test_structure_and_template(self):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: ai-shot-execution-continuity", text)
-        self.assertIn('version: "1.2.0"', text)
+        self.assertIn('version: "1.4.0"', text)
+        self.assertIn("成品资产一致性", text)
         self.assertIn("不默认改成一镜到底", text)
         json.loads((ROOT / "assets/execution-report.template.json").read_text(encoding="utf-8"))
 
@@ -117,6 +122,36 @@ class SkillTests(unittest.TestCase):
         result = self.run_validator(data)
         self.assertEqual(result.returncode, 1)
         self.assertIn("动作触发开始", result.stdout)
+
+    def test_rejects_same_character_closeup_across_groups(self):
+        data = valid_payload()
+        tail = data["单镜检查"][-1]
+        tail["主视觉主体"] = "张三"
+        tail["景别"] = "脸部特写"
+        tail["镜头签名"] = "张三脸部特写|正面|停顿"
+        data["跨分镜组检查"] = {
+            "是否末组": False, "下一组": "第二组",
+            "前组尾镜签名": tail["镜头签名"], "前组尾镜主体": "张三", "前组尾镜景别": "脸部特写",
+            "后组首镜签名": "张三眼部特写|侧面|抬眼", "后组首镜主体": "张三", "后组首镜景别": "眼部特写",
+            "转场方法": "动作承接", "连续锚点": "张三抬眼动作",
+            "匹配剪辑明确批准": False, "匹配剪辑理由": "", "可见匹配依据": "", "问题": [], "状态": "PASS",
+        }
+        result = self.run_validator(data)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("同一人物特写不能直接衔接", result.stdout)
+
+    def test_allows_subject_change_across_groups(self):
+        data = valid_payload()
+        tail = data["单镜检查"][-1]
+        data["跨分镜组检查"] = {
+            "是否末组": False, "下一组": "第二组",
+            "前组尾镜签名": tail["镜头签名"], "前组尾镜主体": tail["主视觉主体"], "前组尾镜景别": tail["景别"],
+            "后组首镜签名": "张三近景|正面|吸气", "后组首镜主体": "张三", "后组首镜景别": "近景",
+            "转场方法": "视线匹配", "连续锚点": "李四看向张三，张三接住视线后吸气",
+            "匹配剪辑明确批准": False, "匹配剪辑理由": "", "可见匹配依据": "", "问题": [], "状态": "PASS",
+        }
+        result = self.run_validator(data)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

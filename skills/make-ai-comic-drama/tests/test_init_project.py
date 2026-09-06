@@ -53,6 +53,10 @@ class InitProjectTests(unittest.TestCase):
             self.assertEqual(config["model_profile"], "seedance-2.5")
             self.assertEqual(config["global_prompt_profile"], "GLOBAL_3D_V1")
             self.assertIsNone(config["episode"]["target_seconds"])
+            self.assertEqual(config["episode"]["normal_min_seconds"], 90)
+            self.assertTrue(config["episode"]["adaptive_to_script"])
+            self.assertEqual(config["episode"]["preferred_max_shot_groups"], 6)
+            self.assertEqual(config["episode"]["seedance_2_5_preferred_group_seconds"], 30)
             self.assertTrue(config["subtitle_policy"]["append_to_each_language_shot"])
             self.assertEqual(
                 config["subtitle_policy"]["required_language_shot_suffix"],

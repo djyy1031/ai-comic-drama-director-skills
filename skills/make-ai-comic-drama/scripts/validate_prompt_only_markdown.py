@@ -45,15 +45,21 @@ def validate(path: Path) -> list[str]:
     groups = GROUP_RE.findall(text)
     if not groups:
         return ["没有找到“## 分镜组…秒”及其独立 ```text 代码块"]
+    if "项目时长规划：" not in text:
+        errors.append("文档开头必须写“项目时长规划：”，说明用户软目标与本集实际安排")
+    if len(groups) > 6 and not re.search(r"分镜组数量例外说明：\s*\S+", text):
+        errors.append("分镜组超过6组时必须填写“分镜组数量例外说明：”")
 
     for phrase in BANNED_TRACKS:
         if phrase in text:
             errors.append(f"发现旧式独立音轨写法：{phrase}")
 
     locked_global: str | None = None
+    total_duration = 0.0
     for group_index, (name, duration_text, body) in enumerate(groups, start=1):
         label = f"分镜组{group_index}（{name.strip()}）"
         duration = float(duration_text)
+        total_duration += duration
         if not body.startswith("【全局固定画质参数】\n"):
             errors.append(f"{label}：代码块第一行不是【全局固定画质参数】")
         if "【全局通用负面提示词】" not in body:
@@ -103,6 +109,12 @@ def validate(path: Path) -> list[str]:
                     errors.append(f"{label}第{shot_index}镜：续说没有锁定“无停顿承接上一镜”")
         if shots[-1][1] != duration:
             errors.append(f"{label}：末镜结束时间{shots[-1][1]:g}秒与分镜组时长{duration:g}秒不一致")
+        if group_index < len(groups):
+            last_shot_text = shots[-1][2]
+            if "转场到下一组：" not in last_shot_text:
+                errors.append(f"{label}：非末组最后一镜必须直接写“转场到下一组：”")
+            elif len(last_shot_text.split("转场到下一组：", 1)[1].strip()) < 12:
+                errors.append(f"{label}：组尾转场必须写清方法、连续锚点和下一组首镜建议")
 
         spoken_fragments = re.findall(
             r"(?:开始|继续)(?:说|内心独白|画外音|旁白|系统语音)：“([^”]*)”",
@@ -111,6 +123,10 @@ def validate(path: Path) -> list[str]:
         if spoken_fragments and spoken_fragments[-1].endswith(("，", "、", "：", "；")):
             errors.append(f"{label}：最后一个语言片段仍在句中，疑似把同一句拆到下一分镜组")
 
+    if total_duration < 90 and not re.search(r"时长例外说明：\s*\S+", text):
+        errors.append("整集低于正常90秒时必须填写“时长例外说明：”")
+    if total_duration > 180:
+        errors.append("整集总时长不得超过180秒")
     return errors
 
 

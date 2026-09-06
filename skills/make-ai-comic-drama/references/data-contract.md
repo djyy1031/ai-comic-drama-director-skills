@@ -55,7 +55,14 @@ PROJECT/
     "preferred_skill": "ai-cinematic-directing-assets",
     "allow_internal_fallback": true
   },
-  "episode": {"target_seconds": null, "final_max_seconds": 180},
+  "episode": {
+    "target_seconds": null,
+    "normal_min_seconds": 90,
+    "final_max_seconds": 180,
+    "adaptive_to_script": true,
+    "preferred_max_shot_groups": 6,
+    "seedance_2_5_preferred_group_seconds": 30
+  },
   "subtitle_policy": {
     "generate_dialogue_subtitles": false,
     "append_to_each_language_shot": true,
@@ -67,7 +74,9 @@ PROJECT/
 
 `model_profile` 是模型隔离唯一开关。不得在分镜组级别临时切换。`render_mode`、`aspect_ratio`、`visual_style`、`global_prompt_profile` 同样是项目初始化必填项，不得留空或使用未确认的默认值。
 
-`episode.target_seconds` 默认留空。分析完原剧本后再按实际可表现内容写入预计时长；它不是必须凑满的硬下限。最终不得超过 `final_max_seconds=180`，不得用空镜、重复反应、静止画面或无意义运镜凑时长。
+项目开始时先询问用户希望每集大概多长。`episode.target_seconds` 记录用户指定的130秒等软目标；用户没有特别要求时保持 `null`，按 `normal_min_seconds=90` 至 `final_max_seconds=180` 的正常范围由剧情决定。`adaptive_to_script=true` 表示目标不能强制凑满：内容少可靠近90秒，内容多可在180秒内延长。不得用空镜、重复反应、静止画面或无意义运镜凑时长。
+
+`preferred_max_shot_groups=6` 和 `seedance_2_5_preferred_group_seconds=30` 是 Seedance 2.5 的优先规划目标。同一场景应先尝试把连续事件合并到接近30秒，整集尽量不超过6组；场景转换、剧情密度、动作复杂度或语言容量不允许时可偏离，并在分集清单中写明原因。
 
 现成模板已按模型分开：
 
@@ -88,6 +97,9 @@ PROJECT/
   "episode": 1,
   "model_profile": "seedance-2.0",
   "planned_final_duration_seconds": 120,
+  "duration_planning_reason": "根据剧情密度与用户软目标说明本集时长依据",
+  "duration_deviation_reason": null,
+  "shot_group_count_exception_reason": null,
   "timeline_overhead_seconds": 0,
   "final_duration_seconds": null,
   "language_units": [
@@ -122,11 +134,22 @@ PROJECT/
         "screen_coordinates": "当前机位画面位置"
       },
       "shots": [
-        {"shot_id": "S01", "start_seconds": 0, "end_seconds": 3, "shot_signature": "双人中景|轴线同侧|关系建立", "purpose": "建立空间", "existence_reason": "交代出口、距离和轴线", "spoken_segments": []},
-        {"shot_id": "S02", "start_seconds": 3, "end_seconds": 6, "shot_signature": "过肩中近景|轴线同侧|说话者", "purpose": "说话者过肩中近景", "existence_reason": "动作触发语言并推进情绪", "spoken_segments": [{"language_id": "DIA01", "segment_index": 1, "text": "你不要逃避，", "start_mode": "ACTION_TRIGGER", "start_trigger": "角色完成具体动作并看向目标后", "spoken_duration_seconds": 1.3, "timing_basis": "ACTUAL_READ", "mouth_state": "现场口型同步", "delivery_continuity": "开始同一条完整语言"}]},
-        {"shot_id": "S03", "start_seconds": 6, "end_seconds": 9, "shot_signature": "近景|轴线同侧|听者反应", "purpose": "听者反应", "existence_reason": "让关系变化可见", "spoken_segments": [{"language_id": "DIA01", "segment_index": 2, "text": "告诉我", "start_mode": "CONTINUE_WITHOUT_RESTART", "start_trigger": "切到听者反应时", "spoken_duration_seconds": 0.8, "timing_basis": "ACTUAL_READ", "mouth_state": "说话者画外连续声", "delivery_continuity": "无停顿承接上一镜"}]},
-        {"shot_id": "S04", "start_seconds": 9, "end_seconds": 12, "shot_signature": "说话者近景|轴线同侧|语言落点", "purpose": "说话者落点", "existence_reason": "完成台词与情绪落点", "spoken_segments": [{"language_id": "DIA01", "segment_index": 3, "text": "真相。", "start_mode": "CONTINUE_WITHOUT_RESTART", "start_trigger": "切回说话者近景时", "spoken_duration_seconds": 1.1, "timing_basis": "ACTUAL_READ", "mouth_state": "现场口型连续", "delivery_continuity": "无停顿承接并完成整句"}]}
+        {"shot_id": "S01", "start_seconds": 0, "end_seconds": 3, "primary_subject": "李明与张三", "framing": "双人中景", "shot_signature": "双人中景|轴线同侧|关系建立", "purpose": "建立空间", "existence_reason": "交代出口、距离和轴线", "spoken_segments": []},
+        {"shot_id": "S02", "start_seconds": 3, "end_seconds": 6, "primary_subject": "李明", "framing": "过肩中近景", "shot_signature": "过肩中近景|轴线同侧|说话者", "purpose": "说话者过肩中近景", "existence_reason": "动作触发语言并推进情绪", "spoken_segments": [{"language_id": "DIA01", "segment_index": 1, "text": "你不要逃避，", "start_mode": "ACTION_TRIGGER", "start_trigger": "角色完成具体动作并看向目标后", "spoken_duration_seconds": 1.3, "timing_basis": "ACTUAL_READ", "mouth_state": "现场口型同步", "delivery_continuity": "开始同一条完整语言"}]},
+        {"shot_id": "S03", "start_seconds": 6, "end_seconds": 9, "primary_subject": "张三", "framing": "近景", "shot_signature": "近景|轴线同侧|听者反应", "purpose": "听者反应", "existence_reason": "让关系变化可见", "spoken_segments": [{"language_id": "DIA01", "segment_index": 2, "text": "告诉我", "start_mode": "CONTINUE_WITHOUT_RESTART", "start_trigger": "切到听者反应时", "spoken_duration_seconds": 0.8, "timing_basis": "ACTUAL_READ", "mouth_state": "说话者画外连续声", "delivery_continuity": "无停顿承接上一镜"}]},
+        {"shot_id": "S04", "start_seconds": 9, "end_seconds": 12, "primary_subject": "李明", "framing": "近景", "shot_signature": "说话者近景|轴线同侧|语言落点", "purpose": "说话者落点", "existence_reason": "完成台词与情绪落点", "spoken_segments": [{"language_id": "DIA01", "segment_index": 3, "text": "真相。", "start_mode": "CONTINUE_WITHOUT_RESTART", "start_trigger": "切回说话者近景时", "spoken_duration_seconds": 1.1, "timing_basis": "ACTUAL_READ", "mouth_state": "现场口型连续", "delivery_continuity": "无停顿承接并完成整句"}]}
       ],
+      "exit_transition": {
+        "to_group_id": "EP001-SG02",
+        "from_shot_signature": "说话者近景|轴线同侧|语言落点",
+        "from_primary_subject": "李明",
+        "from_framing": "近景",
+        "to_shot_signature": "双人中景|轴线同侧|关系变化",
+        "to_primary_subject": "李明与张三",
+        "to_framing": "双人中景",
+        "transition_method": "视线落点接双人关系镜头",
+        "continuity_anchor": "李明说完后保持看向张三，张三吸气准备回答"
+      },
       "prompt_asset_bindings": ["原文角色名=原文角色名音色=", "金融一班教室="],
       "assets": [],
       "clean_prompt": "纯净提示词"
@@ -144,6 +167,10 @@ PROJECT/
 ```
 
 `planned_final_duration_seconds = 所有分镜组实际时长之和 + timeline_overhead_seconds`。
+
+`duration_planning_reason` 必须说明本集如何在用户软目标、正常90—180秒范围与剧情实际容量之间取值。低于90秒时必须填写 `duration_deviation_reason`；超过180秒始终禁止。分镜组超过项目 `preferred_max_shot_groups` 时必须填写 `shot_group_count_exception_reason`。
+
+每镜使用 `primary_subject`、`framing` 和 `shot_signature` 固定主体、景别和完整镜头签名。每个非末组填写 `exit_transition`，并与实际前组尾镜及后组首镜完全对应；末组使用 `null`。相邻镜头签名不得相同，默认禁止 `from_primary_subject = to_primary_subject` 且前后景别均为特写。若原文或用户明确要求匹配剪辑，额外记录 `match_cut_approved=true`、`match_cut_reason` 和可见匹配依据。
 
 所有视觉镜头都使用各自起止时间。完整对白、独白、旁白、画外音或系统语音登记在集级 `language_units` 作为原文校验基准；真正进入视频提示词的是各镜 `spoken_segments`。同一语言单元的片段按 `segment_index` 拼接后必须逐字等于 `full_text`。第一片段使用 `ACTION_TRIGGER` 并写具体动作或现场事件；后续片段使用 `CONTINUE_WITHOUT_RESTART`，无停顿承接上一镜。禁止另列独立计时音轨总设定，也禁止使用 `kind = continuous_language_block` 把整段语言伪装成一个长镜头。
 

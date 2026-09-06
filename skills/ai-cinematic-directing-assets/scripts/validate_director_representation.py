@@ -4,13 +4,21 @@ import sys
 from pathlib import Path
 
 
-REQUIRED_TOP = ["规范版本", "来源锚点", "不可修改剧情事实", "不可修改原文台词", "场景诊断", "调用模块", "人物表演方案", "连续性状态", "语言单元", "镜头设计", "镜头执行与连续性检查", "模型适配提醒"]
+REQUIRED_TOP = ["规范版本", "来源锚点", "不可修改剧情事实", "不可修改原文台词", "场景诊断", "调用模块", "人物表演方案", "连续性状态", "组间转场设计", "语言单元", "镜头设计", "镜头执行与连续性检查", "模型适配提醒"]
 REQUIRED_DIAGNOSIS = ["主场景类型", "主要剧情功能", "战斗阶段", "情绪轨迹", "视觉优先级", "不可切断单元", "连续性风险"]
-REQUIRED_SHOT = ["顺序", "类型", "建议时长秒", "语言片段", "镜头签名", "镜头功能", "存在理由", "主体与变化", "摄影机", "角色表演进程", "入镜状态", "出镜状态"]
+REQUIRED_SHOT = ["顺序", "类型", "建议时长秒", "语言片段", "主视觉主体", "镜头签名", "镜头功能", "存在理由", "主体与变化", "摄影机", "角色表演进程", "入镜状态", "出镜状态"]
 REQUIRED_UNIT = ["语言单元ID", "类型", "说话人", "完整原文", "所属分镜组", "默认不跨组", "连续要求"]
 REQUIRED_SEGMENT = ["语言单元ID", "片段顺序", "原文片段", "开始方式", "开始触发", "语言时长秒", "时长依据", "口型状态", "连续要求"]
 TIMING_BASES = {"ACTUAL_READ", "ESTIMATED"}
 DEFAULT_MAX_SHOT_SECONDS = 6.0
+
+
+def nonempty(value):
+    return bool(str(value or "").strip())
+
+
+def is_closeup(value):
+    return "特写" in str(value or "")
 
 
 def validate(data):
@@ -155,6 +163,42 @@ def validate(data):
                 errors.append(f"连续性状态缺少：{key}")
     elif "连续性状态" in data:
         errors.append("连续性状态必须是对象")
+
+    transition = data.get("组间转场设计")
+    if not isinstance(transition, dict):
+        errors.append("组间转场设计必须是对象")
+    else:
+        is_final = transition.get("是否末组")
+        if not isinstance(is_final, bool):
+            errors.append("组间转场设计.是否末组必须是布尔值")
+        elif not is_final:
+            required_transition = [
+                "下一组", "前组尾镜签名", "前组尾镜主体", "前组尾镜景别",
+                "后组首镜建议签名", "后组首镜建议主体", "后组首镜建议景别",
+                "转场方法", "连续锚点", "避免重复说明",
+            ]
+            for key in required_transition:
+                if not nonempty(transition.get(key)):
+                    errors.append(f"非末组的组间转场设计缺少：{key}")
+            if shots and isinstance(shots[-1], dict):
+                last = shots[-1]
+                camera = last.get("摄影机") if isinstance(last.get("摄影机"), dict) else {}
+                for field, actual in [
+                    ("前组尾镜签名", last.get("镜头签名")),
+                    ("前组尾镜主体", last.get("主视觉主体")),
+                    ("前组尾镜景别", camera.get("景别")),
+                ]:
+                    if transition.get(field) != actual:
+                        errors.append(f"组间转场设计.{field}必须匹配本组最后一镜")
+            if transition.get("前组尾镜签名") == transition.get("后组首镜建议签名"):
+                errors.append("组间转场的前组尾镜与后组首镜建议不能使用相同镜头签名")
+            same_subject = transition.get("前组尾镜主体") == transition.get("后组首镜建议主体")
+            both_closeup = is_closeup(transition.get("前组尾镜景别")) and is_closeup(transition.get("后组首镜建议景别"))
+            if same_subject and both_closeup:
+                approved = transition.get("匹配剪辑明确批准") is True
+                supported = nonempty(transition.get("匹配剪辑理由")) and nonempty(transition.get("可见匹配依据"))
+                if not (approved and supported):
+                    errors.append("同一人物特写不能直接衔接同一人物特写；确需匹配剪辑时必须明确批准并填写理由和可见依据")
     return errors
 
 

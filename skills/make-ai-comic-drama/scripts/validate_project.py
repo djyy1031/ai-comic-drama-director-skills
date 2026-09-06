@@ -47,6 +47,9 @@ SHOT_HEADER_PATTERN = re.compile(
 )
 SECTION_HEADER_PATTERN = re.compile(r"^【[^】]+】")
 DEFAULT_MAX_SHOT_SECONDS = 6.0
+DEFAULT_NORMAL_MIN_EPISODE_SECONDS = 90.0
+DEFAULT_PREFERRED_MAX_SHOT_GROUPS = 6
+SEEDANCE_25_PREFERRED_GROUP_SECONDS = 30.0
 TIMING_BASES = {"ACTUAL_READ", "ESTIMATED"}
 START_MODES = {"ACTION_TRIGGER", "CONTINUE_WITHOUT_RESTART"}
 REQUIRED_LANGUAGE_UNIT_FIELDS = (
@@ -131,9 +134,32 @@ def validate_config(config: dict[str, Any], result: Result) -> str | None:
     if not isinstance(episode_config, dict):
         result.error("project_config.episode必须是对象。")
     else:
+        target_seconds = as_number(episode_config.get("target_seconds"))
+        normal_min_seconds = as_number(episode_config.get("normal_min_seconds"))
         max_seconds = as_number(episode_config.get("final_max_seconds"))
         if max_seconds is None or max_seconds <= 0 or max_seconds > 180:
             result.error("episode.final_max_seconds必须大于0且不得超过180。")
+        if normal_min_seconds is None or normal_min_seconds <= 0:
+            result.error("episode.normal_min_seconds必须是正数，默认使用90。")
+        elif max_seconds is not None and normal_min_seconds > max_seconds:
+            result.error("episode.normal_min_seconds不得超过final_max_seconds。")
+        if target_seconds is not None and (
+            target_seconds <= 0
+            or (max_seconds is not None and target_seconds > max_seconds)
+        ):
+            result.error("episode.target_seconds必须留空或位于有效成片时长范围内。")
+        if episode_config.get("adaptive_to_script") is not True:
+            result.error("episode.adaptive_to_script必须为true，时长目标不得强制凑满。")
+        preferred_groups = as_number(episode_config.get("preferred_max_shot_groups"))
+        if preferred_groups is None or not close(preferred_groups, DEFAULT_PREFERRED_MAX_SHOT_GROUPS):
+            result.error("episode.preferred_max_shot_groups必须为6。")
+        preferred_group_seconds = as_number(
+            episode_config.get("seedance_2_5_preferred_group_seconds")
+        )
+        if preferred_group_seconds is None or not close(
+            preferred_group_seconds, SEEDANCE_25_PREFERRED_GROUP_SECONDS
+        ):
+            result.error("episode.seedance_2_5_preferred_group_seconds必须为30。")
 
     subtitle = config.get("subtitle_policy")
     if not isinstance(subtitle, dict):
@@ -201,6 +227,10 @@ def validate_shot_timeline(
             result.error(f"{prefix} 第{index}镜必须写existence_reason。")
         if not str(shot.get("shot_signature") or "").strip():
             result.error(f"{prefix} 第{index}镜必须写shot_signature，用于跨组和重复镜头检查。")
+        if not str(shot.get("primary_subject") or "").strip():
+            result.error(f"{prefix} 第{index}镜必须写primary_subject，用于跨组主体检查。")
+        if not str(shot.get("framing") or "").strip():
+            result.error(f"{prefix} 第{index}镜必须写framing，用于跨组景别检查。")
         if not isinstance(shot.get("spoken_segments"), list):
             result.error(f"{prefix} 第{index}镜spoken_segments必须是数组。")
         if not close(start, previous_end):
@@ -608,9 +638,107 @@ def validate_sound_plan(
             )
 
 
+def validate_group_transitions(
+    path: Path,
+    groups: list[Any],
+    config_model: str,
+    result: Result,
+) -> None:
+    required_transition_fields = (
+        "to_group_id",
+        "from_shot_signature",
+        "from_primary_subject",
+        "from_framing",
+        "to_shot_signature",
+        "to_primary_subject",
+        "to_framing",
+        "transition_method",
+        "continuity_anchor",
+    )
+    for index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+        group_label = str(group.get("shot_group_id") or f"分镜组{index + 1}")
+        transition = group.get("exit_transition")
+        if index == len(groups) - 1:
+            if transition not in (None, {}):
+                result.error(f"{path}:{group_label} 末组exit_transition必须为null。")
+            continue
+
+        next_group = groups[index + 1]
+        if not isinstance(next_group, dict):
+            continue
+        if not isinstance(transition, dict):
+            result.error(f"{path}:{group_label} 非末组必须填写exit_transition。")
+            continue
+        for field_name in required_transition_fields:
+            if not str(transition.get(field_name) or "").strip():
+                result.error(f"{path}:{group_label} exit_transition缺少{field_name}。")
+
+        current_shots = group.get("shots") or []
+        next_shots = next_group.get("shots") or []
+        if not current_shots or not next_shots:
+            continue
+        last_shot = current_shots[-1] if isinstance(current_shots[-1], dict) else {}
+        first_shot = next_shots[0] if isinstance(next_shots[0], dict) else {}
+        expected_values = {
+            "to_group_id": str(next_group.get("shot_group_id") or ""),
+            "from_shot_signature": str(last_shot.get("shot_signature") or ""),
+            "from_primary_subject": str(last_shot.get("primary_subject") or ""),
+            "from_framing": str(last_shot.get("framing") or ""),
+            "to_shot_signature": str(first_shot.get("shot_signature") or ""),
+            "to_primary_subject": str(first_shot.get("primary_subject") or ""),
+            "to_framing": str(first_shot.get("framing") or ""),
+        }
+        for field_name, expected in expected_values.items():
+            if str(transition.get(field_name) or "") != expected:
+                result.error(
+                    f"{path}:{group_label} exit_transition.{field_name}必须与实际相邻镜头一致。"
+                )
+
+        from_signature = expected_values["from_shot_signature"]
+        to_signature = expected_values["to_shot_signature"]
+        if from_signature and from_signature == to_signature:
+            result.error(f"{path}:{group_label} 尾镜与下一组首镜的镜头签名不得相同。")
+
+        same_subject_closeups = (
+            expected_values["from_primary_subject"]
+            and expected_values["from_primary_subject"] == expected_values["to_primary_subject"]
+            and "特写" in expected_values["from_framing"]
+            and "特写" in expected_values["to_framing"]
+        )
+        if same_subject_closeups:
+            approved = transition.get("match_cut_approved") is True
+            reason = str(transition.get("match_cut_reason") or "").strip()
+            basis = str(transition.get("match_cut_basis") or "").strip()
+            if not (approved and reason and basis):
+                result.error(
+                    f"{path}:{group_label} 默认禁止同一人物特写硬接同一人物特写；"
+                    "匹配剪辑例外必须填写批准、理由和可见匹配依据。"
+                )
+
+        if "转场到下一组：" not in str(group.get("clean_prompt") or ""):
+            result.error(f"{path}:{group_label} 非末组最后一镜必须写“转场到下一组：”。")
+
+        duration = as_number(group.get("duration_seconds"))
+        if (
+            config_model == "seedance-2.5"
+            and duration is not None
+            and duration < 28
+            and str(group.get("scene_name") or "").strip()
+            == str(next_group.get("scene_name") or "").strip()
+            and not str(group.get("duration_exception_reason") or "").strip()
+        ):
+            result.error(
+                f"{path}:{group_label} 与下一组同场景且不足28秒；"
+                "必须说明为什么不能继续合并到接近30秒。"
+            )
+
+
 def validate_manifest(
     path: Path,
     config_model: str,
+    episode_policy: dict[str, Any],
     stage: str,
     result: Result,
 ) -> None:
@@ -629,6 +757,18 @@ def validate_manifest(
     overhead = as_number(manifest.get("timeline_overhead_seconds"))
     if planned is None or planned <= 0 or planned > 180:
         result.error(f"{path} planned_final_duration_seconds必须大于0且不超过180。")
+    if not str(manifest.get("duration_planning_reason") or "").strip():
+        result.error(f"{path} 必须填写duration_planning_reason说明本集时长依据。")
+    normal_min = as_number(episode_policy.get("normal_min_seconds"))
+    if (
+        planned is not None
+        and normal_min is not None
+        and planned < normal_min
+        and not str(manifest.get("duration_deviation_reason") or "").strip()
+    ):
+        result.error(
+            f"{path} 预计时长低于正常{normal_min:g}秒时必须填写duration_deviation_reason。"
+        )
     if overhead is None or overhead < 0:
         result.error(f"{path} timeline_overhead_seconds必须是非负数。")
         overhead = 0.0
@@ -637,6 +777,17 @@ def validate_manifest(
     if not isinstance(groups, list) or not groups:
         result.error(f"{path} shot_groups必须是非空数组。")
         return
+
+    preferred_group_count = as_number(episode_policy.get("preferred_max_shot_groups"))
+    if (
+        preferred_group_count is not None
+        and len(groups) > int(preferred_group_count)
+        and not str(manifest.get("shot_group_count_exception_reason") or "").strip()
+    ):
+        result.error(
+            f"{path} 分镜组数量{len(groups)}超过优先上限{int(preferred_group_count)}，"
+            "必须填写shot_group_count_exception_reason。"
+        )
 
     group_total = 0.0
     seen_ids: set[str] = set()
@@ -690,6 +841,7 @@ def validate_manifest(
             validate_assets_for_production(path, group_label, group.get("assets"), result)
 
     validate_language_units(path, groups, manifest.get("language_units"), stage, result)
+    validate_group_transitions(path, groups, config_model, result)
 
     if planned is not None and not close(group_total + overhead, planned):
         result.error(
@@ -734,7 +886,7 @@ def validate_project(root: Path, stage: str) -> Result:
         result.error(f"未找到episode_manifest.json：{manifest_root}")
         return result
     for manifest in manifests:
-        validate_manifest(manifest, model, stage, result)
+        validate_manifest(manifest, model, config.get("episode") or {}, stage, result)
     return result
 
 

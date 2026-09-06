@@ -7,10 +7,10 @@ from pathlib import Path
 REQUIRED_TOP = [
     "规范版本", "来源锚点", "不可修改剧情事实", "不可修改原文台词",
     "活动资产白名单", "画面内人物白名单", "场景空间地图", "光线与色卡基线", "语言单元",
-    "单镜检查", "切镜连续性", "最终裁决",
+    "单镜检查", "切镜连续性", "跨分镜组检查", "最终裁决",
 ]
 REQUIRED_SHOT = [
-    "镜头ID", "时长秒", "活动实体", "画面内人物", "第一帧", "人物空间关系", "道具状态",
+    "镜头ID", "时长秒", "主视觉主体", "景别", "镜头签名", "活动实体", "画面内人物", "第一帧", "人物空间关系", "道具状态",
     "摄影机", "光线", "动作物理", "语言片段", "入镜状态", "出镜状态",
     "局部修复锁", "问题", "状态",
 ]
@@ -28,6 +28,10 @@ MAX_NORMAL_SHOT_SECONDS = 6.0
 
 def nonempty(value):
     return bool(str(value or "").strip())
+
+
+def is_closeup(value):
+    return "特写" in str(value or "")
 
 
 def validate(data):
@@ -100,6 +104,9 @@ def validate(data):
                 errors.append(f"第{index}条单镜检查的镜头ID为空或重复")
             seen.add(shot_id)
             shot_ids.append(shot_id)
+            for field in ["主视觉主体", "景别", "镜头签名"]:
+                if not nonempty(shot.get(field)):
+                    errors.append(f"镜头{shot_id}的{field}不能为空")
             duration = shot.get("时长秒")
             if not isinstance(duration, (int, float)) or isinstance(duration, bool) or duration <= 0:
                 errors.append(f"镜头{shot_id}的时长秒必须是正数")
@@ -253,6 +260,45 @@ def validate(data):
     if actual_pairs != expected_pairs:
         errors.append("切镜连续性必须逐对覆盖全部相邻镜头，且顺序一致")
 
+    group_transition = data.get("跨分镜组检查")
+    if not isinstance(group_transition, dict):
+        errors.append("跨分镜组检查必须是对象")
+    else:
+        is_final = group_transition.get("是否末组")
+        if not isinstance(is_final, bool):
+            errors.append("跨分镜组检查.是否末组必须是布尔值")
+        elif not is_final:
+            required = [
+                "下一组", "前组尾镜签名", "前组尾镜主体", "前组尾镜景别",
+                "后组首镜签名", "后组首镜主体", "后组首镜景别", "转场方法", "连续锚点",
+            ]
+            for key in required:
+                if not nonempty(group_transition.get(key)):
+                    errors.append(f"非末组的跨分镜组检查缺少：{key}")
+            if shots and isinstance(shots[-1], dict):
+                last = shots[-1]
+                for field, actual in [
+                    ("前组尾镜签名", last.get("镜头签名")),
+                    ("前组尾镜主体", last.get("主视觉主体")),
+                    ("前组尾镜景别", last.get("景别")),
+                ]:
+                    if group_transition.get(field) != actual:
+                        errors.append(f"跨分镜组检查.{field}必须匹配本组最后一镜")
+            if group_transition.get("前组尾镜签名") == group_transition.get("后组首镜签名"):
+                errors.append("跨分镜组的前组尾镜与后组首镜不能使用相同镜头签名")
+            same_subject = group_transition.get("前组尾镜主体") == group_transition.get("后组首镜主体")
+            both_closeup = is_closeup(group_transition.get("前组尾镜景别")) and is_closeup(group_transition.get("后组首镜景别"))
+            if same_subject and both_closeup:
+                approved = group_transition.get("匹配剪辑明确批准") is True
+                supported = nonempty(group_transition.get("匹配剪辑理由")) and nonempty(group_transition.get("可见匹配依据"))
+                if not (approved and supported):
+                    errors.append("同一人物特写不能直接衔接同一人物特写；确需匹配剪辑时必须明确批准并填写理由和可见依据")
+        issues = group_transition.get("问题")
+        if not isinstance(issues, list):
+            errors.append("跨分镜组检查.问题必须是数组")
+        if group_transition.get("状态") == "PASS" and issues:
+            errors.append("跨分镜组检查标记PASS时问题必须为空")
+
     verdict = data.get("最终裁决")
     if not isinstance(verdict, dict):
         errors.append("最终裁决必须是对象")
@@ -267,6 +313,8 @@ def validate(data):
                 errors.append("存在未通过单镜时最终裁决不能为PASS")
             if any(isinstance(cut, dict) and cut.get("状态") != "PASS" for cut in cuts):
                 errors.append("存在未通过切点时最终裁决不能为PASS")
+            if not isinstance(group_transition, dict) or group_transition.get("状态") != "PASS":
+                errors.append("跨分镜组检查未通过时最终裁决不能为PASS")
     return errors
 
 
