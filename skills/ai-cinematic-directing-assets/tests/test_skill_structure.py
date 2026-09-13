@@ -12,7 +12,7 @@ class SkillStructureTests(unittest.TestCase):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertTrue(text.startswith("---\n"))
         self.assertIn("name: ai-cinematic-directing-assets", text)
-        self.assertIn('version: "1.5.0"', text)
+        self.assertIn('version: "1.6.0"', text)
         self.assertIn("画面执行表达库", text)
         self.assertTrue((ROOT / "references/visual-execution-vocabulary.md").exists())
         self.assertIn("动作触发开口", text)

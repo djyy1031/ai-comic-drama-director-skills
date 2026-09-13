@@ -42,7 +42,8 @@ def _asset_block_and_global(body: str) -> tuple[list[str], str] | tuple[None, No
 def validate(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
-    groups = GROUP_RE.findall(text)
+    matches = list(GROUP_RE.finditer(text))
+    groups = [match.groups() for match in matches]
     if not groups:
         return ["没有找到“## 分镜组…秒”及其独立 ```text 代码块"]
     if "项目时长规划：" not in text:
@@ -109,12 +110,12 @@ def validate(path: Path) -> list[str]:
                     errors.append(f"{label}第{shot_index}镜：续说没有锁定“无停顿承接上一镜”")
         if shots[-1][1] != duration:
             errors.append(f"{label}：末镜结束时间{shots[-1][1]:g}秒与分镜组时长{duration:g}秒不一致")
+        if "转场到下一组" in body or "剪辑衔接：" in body:
+            errors.append(f"{label}：剪辑衔接必须放在代码块外，正文仅含本组生成内容")
         if group_index < len(groups):
-            last_shot_text = shots[-1][2]
-            if "转场到下一组：" not in last_shot_text:
-                errors.append(f"{label}：非末组最后一镜必须直接写“转场到下一组：”")
-            elif len(last_shot_text.split("转场到下一组：", 1)[1].strip()) < 12:
-                errors.append(f"{label}：组尾转场必须写清方法、连续锚点和下一组首镜建议")
+            after_block = text[matches[group_index - 1].end():matches[group_index].start()]
+            if not re.search(r"^剪辑衔接：[^\n]+", after_block, flags=re.M):
+                errors.append(f"{label}：代码块后必须写“剪辑衔接：”，说明接法、锚点和下一组首镜")
 
         spoken_fragments = re.findall(
             r"(?:开始|继续)(?:说|内心独白|画外音|旁白|系统语音)：“([^”]*)”",

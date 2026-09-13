@@ -19,7 +19,7 @@ SPEC.loader.exec_module(VALIDATOR)
 def valid_document(second_global: str = "统一画质。") -> str:
     def group(number: str, event: str, global_line: str, speech: str, has_next: bool) -> str:
         transition = (
-            " 转场到下一组：以乙抬眼形成视线落点，下一组改从甲乙双人中景开始，保持对话轴线和茶杯位置。"
+            "剪辑衔接：以乙抬眼形成视线落点，下一组改从甲乙双人中景开始，保持对话轴线和茶杯位置。"
             if has_next
             else ""
         )
@@ -42,8 +42,9 @@ def valid_document(second_global: str = "统一画质。") -> str:
 【语言连续性总锁】
 本组台词只说一次，逐镜无停顿承接。
 【0.0—4.0秒】：甲放下茶杯后，甲（克制）朝向乙开始说：“{speech}”乙没有木站，乙抬眼观察甲。结束状态：甲右手离开茶杯。 视频严禁出现台词、内心独白与系统语音字幕。
-【4.0—8.0秒】：乙反应近景，乙眉心轻收并缓慢吸气，甲保持等待。结束状态：乙准备回答。{transition}
+【4.0—8.0秒】：乙反应近景，乙眉心轻收并缓慢吸气，甲保持等待。结束状态：乙准备回答。
 ```
+{transition}
 '''
 
     return (
@@ -82,13 +83,13 @@ class PromptOnlyMarkdownTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "episode.md"
             content = valid_document().replace(
-                " 转场到下一组：以乙抬眼形成视线落点，下一组改从甲乙双人中景开始，保持对话轴线和茶杯位置。",
+                "剪辑衔接：以乙抬眼形成视线落点，下一组改从甲乙双人中景开始，保持对话轴线和茶杯位置。",
                 "",
                 1,
             )
             path.write_text(content, encoding="utf-8")
             errors = VALIDATOR.validate(path)
-            self.assertTrue(any("非末组最后一镜" in error for error in errors))
+            self.assertTrue(any("代码块后" in error for error in errors))
 
 
 if __name__ == "__main__":

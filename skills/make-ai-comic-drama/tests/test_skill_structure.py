@@ -177,7 +177,7 @@ class SkillStructureTests(unittest.TestCase):
         self.assertNotIn("【连续对白音轨总设定】", prompt_format)
 
         skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn('version: "2.9.0"', skill)
+        self.assertIn('version: "2.12.0"', skill)
         self.assertIn("动作触发", skill)
 
     def test_prompt_only_delivery_mode_is_complete(self):
