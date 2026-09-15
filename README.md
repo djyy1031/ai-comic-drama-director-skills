@@ -2,7 +2,7 @@
 
 一套面向 Codex 的人工智能漫剧生产技能包。既可以把小说、章节或剧本整理为可审核、可继续生产的完整项目，也可以只生成适配 Seedance 2.0 / 2.5、可直接复制使用的分镜组提示词文档。
 
-> 当前公开版：人工智能漫剧导演 v2.12.0 + 分镜资产接入与空间锚定库 v1.0.0 + 人物表演资产库 v1.2.0 + AI 影视导演语言资产库 v1.6.0 + 镜头执行与连续性检查库 v1.5.0 + 漫剧场景资产导演 v1.3.0。
+> 当前公开版：人工智能漫剧导演 v2.13.0 + 分镜资产接入与空间锚定库 v1.0.0 + 人物表演资产库 v1.3.0 + AI 影视导演语言资产库 v1.6.0 + 镜头执行与连续性检查库 v1.6.0 + 漫剧场景资产导演 v1.3.1。
 
 ## 包含内容
 
@@ -16,6 +16,10 @@
 只制作分镜提示词且没有成品资产时，沿用“人物表演 → 导演镜头 → 执行连续性检查 → 主流程编译”。用户提供已做好的资产时，在最前面增加“成品资产接入与空间锚定”，真实查看资产后再设计镜头；最终仍只交付一份 Markdown 分镜提示词文档。场景资产 Skill 用于规划和生产新场景资产，成品资产证据 Skill 用于把已有资产接入分镜，两者不重复。所有专业 Skill 都不得擅自改写剧情。
 
 ## 本次更新
+
+- 真人情绪展开为具体部位、幅度与过程，避免眼睛发光和整脸变色。
+- 手掌发红、淤青及黑眼圈以原肤色为底，限定范围、自然过渡并跨镜继承。
+- 加入 `ai-storyboard-blocking-assets` v1.1.0，制作及复用每组站位参考图；用户只要文字时不生成图片。
 
 - 离场人物只记录在内部连续性账本，生成正文不写“某人不在”等带名字的排除说明；原文语言中提及的人名照录。
 - 非脸部特写最多2秒；长台词由表情、反应和必要的中景承接。
@@ -50,12 +54,14 @@
 
 按需要下载独立压缩包并导入 Codex：
 
-1. [人工智能漫剧导演 v2.12.0](releases/make-ai-comic-drama-v2.12.0.zip)
-2. [人物表演资产库 v1.2.0](releases/ai-character-performance-assets-v1.2.0.zip)
+1. [人工智能漫剧导演 v2.13.0](releases/make-ai-comic-drama-v2.13.0.zip)
+2. [人物表演资产库 v1.3.0](releases/ai-character-performance-assets-v1.3.0.zip)
 3. [AI 影视导演语言资产库 v1.6.0](releases/ai-cinematic-directing-assets-v1.6.0.zip)
-4. [镜头执行与连续性检查库 v1.5.0](releases/ai-shot-execution-continuity-v1.5.0.zip)
+4. [镜头执行与连续性检查库 v1.6.0](releases/ai-shot-execution-continuity-v1.6.0.zip)
 5. [分镜资产接入与空间锚定库 v1.0.0](releases/ai-storyboard-asset-grounding-v1.0.0.zip)
-6. [漫剧场景资产导演 v1.3.0](releases/ai-comic-scene-assets-v1.3.0.zip)
+6. [漫剧场景资产导演 v1.3.1](releases/ai-comic-scene-assets-v1.3.1.zip)
+
+7. [分镜组站位资产 v1.1.0](releases/ai-storyboard-blocking-assets-v1.1.0.zip)
 
 文件校验值见 [SHA256SUMS.txt](releases/SHA256SUMS.txt)。
 

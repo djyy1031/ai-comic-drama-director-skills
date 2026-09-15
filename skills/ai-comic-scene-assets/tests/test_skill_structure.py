@@ -13,7 +13,7 @@ class SceneSkillStructureTests(unittest.TestCase):
         content = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertTrue(content.startswith("---\n"))
         self.assertIn("name: ai-comic-scene-assets", content)
-        self.assertIn('version: "1.3.0"', content)
+        self.assertIn('version: "1.3.1"', content)
 
     def test_all_markdown_links_exist(self):
         missing = []
