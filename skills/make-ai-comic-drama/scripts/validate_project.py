@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 MODEL_PROFILES = {"seedance-2.0", "seedance-2.5"}
 REQUIRED_LANGUAGE_SHOT_SUFFIX = "视频严禁出现台词、内心独白与系统语音字幕。"
 AUDIT_KEYS = (
@@ -48,8 +47,6 @@ SHOT_HEADER_PATTERN = re.compile(
 SECTION_HEADER_PATTERN = re.compile(r"^【[^】]+】")
 DEFAULT_MAX_SHOT_SECONDS = 6.0
 DEFAULT_NORMAL_MIN_EPISODE_SECONDS = 90.0
-DEFAULT_PREFERRED_MAX_SHOT_GROUPS = 6
-SEEDANCE_25_PREFERRED_GROUP_SECONDS = 30.0
 TIMING_BASES = {"ACTUAL_READ", "ESTIMATED"}
 START_MODES = {"ACTION_TRIGGER", "CONTINUE_WITHOUT_RESTART"}
 REQUIRED_LANGUAGE_UNIT_FIELDS = (
@@ -61,7 +58,6 @@ REQUIRED_SEGMENT_FIELDS = (
     "language_id", "segment_index", "text", "start_mode", "start_trigger",
     "spoken_duration_seconds", "timing_basis", "mouth_state", "delivery_continuity",
 )
-
 
 @dataclass
 class Result:
@@ -79,7 +75,6 @@ class Result:
     def warning(self, message: str) -> None:
         self.warnings.append(message)
 
-
 def load_json(path: Path, result: Result) -> dict[str, Any] | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8-sig"))
@@ -94,7 +89,6 @@ def load_json(path: Path, result: Result) -> dict[str, Any] | None:
         return None
     return data
 
-
 def as_number(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
@@ -102,17 +96,14 @@ def as_number(value: Any) -> float | None:
         return float(value)
     return None
 
-
 def close(a: float, b: float, tolerance: float = 0.01) -> bool:
     return abs(a - b) <= tolerance
-
 
 def mask_dialogue_quotes(text: str) -> str:
     masked = text
     for pattern in QUOTE_PATTERNS:
         masked = pattern.sub(lambda match: " " * len(match.group(0)), masked)
     return masked
-
 
 def validate_config(config: dict[str, Any], result: Result) -> str | None:
     model = config.get("model_profile")
@@ -150,16 +141,10 @@ def validate_config(config: dict[str, Any], result: Result) -> str | None:
             result.error("episode.target_seconds必须留空或位于有效成片时长范围内。")
         if episode_config.get("adaptive_to_script") is not True:
             result.error("episode.adaptive_to_script必须为true，时长目标不得强制凑满。")
-        preferred_groups = as_number(episode_config.get("preferred_max_shot_groups"))
-        if preferred_groups is None or not close(preferred_groups, DEFAULT_PREFERRED_MAX_SHOT_GROUPS):
-            result.error("episode.preferred_max_shot_groups必须为6。")
-        preferred_group_seconds = as_number(
-            episode_config.get("seedance_2_5_preferred_group_seconds")
-        )
-        if preferred_group_seconds is None or not close(
-            preferred_group_seconds, SEEDANCE_25_PREFERRED_GROUP_SECONDS
-        ):
-            result.error("episode.seedance_2_5_preferred_group_seconds必须为30。")
+        preferred_groups = episode_config.get("preferred_max_shot_groups")
+        if preferred_groups is not None and (as_number(preferred_groups) is None or preferred_groups <= 0 or int(preferred_groups) != preferred_groups):
+            result.error("episode.preferred_max_shot_groups仅在用户明确要求时填写正整数，否则留空。")
+        # Legacy seedance_2_5_preferred_group_seconds is ignored: no separate directing policy.
 
     subtitle = config.get("subtitle_policy")
     if not isinstance(subtitle, dict):
@@ -175,7 +160,6 @@ def validate_config(config: dict[str, Any], result: Result) -> str | None:
         if subtitle.get("generate_dialogue_subtitles") is not False:
             result.error("generate_dialogue_subtitles必须为false。")
     return model
-
 
 def validate_shot_timeline(
     manifest_path: Path,
@@ -254,7 +238,6 @@ def validate_shot_timeline(
         result.error(
             f"{prefix} 末镜结束时间{previous_end:g}不等于分镜组时长{duration:g}。"
         )
-
 
 def validate_language_units(
     manifest_path: Path,
@@ -406,7 +389,6 @@ def validate_language_units(
         unit_duration = as_number(unit.get("spoken_duration_seconds"))
         if unit_duration is not None and not close(total_spoken, unit_duration, tolerance=0.25):
             result.error(f"{prefix} 语言单元{unit_id}的片段时长合计与单元时长不一致。")
-
 
 def validate_prompt(
     manifest_path: Path,
@@ -563,7 +545,6 @@ def validate_prompt(
             f"{prefix} 执行描述含模糊指代“{match.group(0)}”，必须改为标准名称。"
         )
 
-
 def validate_assets_for_production(
     manifest_path: Path,
     group_label: str,
@@ -587,7 +568,6 @@ def validate_assets_for_production(
         if int(score) == 3 and asset.get("status") != "READY":
             name = asset.get("canonical_name") or asset.get("asset_id") or f"第{index}项"
             result.error(f"{prefix} 必须资产“{name}”尚未READY。")
-
 
 def validate_sound_plan(
     manifest_path: Path,
@@ -636,7 +616,6 @@ def validate_sound_plan(
                 f"{manifest_path} 声音执行表覆盖到{covered_end:g}秒，"
                 f"不等于最终成片{final_duration:g}秒。"
             )
-
 
 def validate_group_transitions(
     path: Path,
@@ -717,23 +696,7 @@ def validate_group_transitions(
                     "匹配剪辑例外必须填写批准、理由和可见匹配依据。"
                 )
 
-        if "转场到下一组：" not in str(group.get("clean_prompt") or ""):
-            result.error(f"{path}:{group_label} 非末组最后一镜必须写“转场到下一组：”。")
-
-        duration = as_number(group.get("duration_seconds"))
-        if (
-            config_model == "seedance-2.5"
-            and duration is not None
-            and duration < 28
-            and str(group.get("scene_name") or "").strip()
-            == str(next_group.get("scene_name") or "").strip()
-            and not str(group.get("duration_exception_reason") or "").strip()
-        ):
-            result.error(
-                f"{path}:{group_label} 与下一组同场景且不足28秒；"
-                "必须说明为什么不能继续合并到接近30秒。"
-            )
-
+        # Transition evidence is validated above in exit_transition; generated content stays within the current group.
 
 def validate_manifest(
     path: Path,
@@ -826,10 +789,6 @@ def validate_manifest(
         if config_model == "seedance-2.5":
             if duration > 30:
                 result.error(f"{path}:{group_label} Seedance 2.5分镜组不得超过30秒。")
-            if duration < 20 and not str(group.get("duration_exception_reason") or "").strip():
-                result.error(
-                    f"{path}:{group_label} Seedance 2.5低于20秒时必须说明无法合并的例外原因。"
-                )
 
         shots = group.get("shots")
         has_spoken_language = group.get("has_spoken_language") is True
@@ -869,7 +828,6 @@ def validate_manifest(
         if manifest.get("final_episode_ready") is not True:
             result.error(f"{path} final_episode_ready必须为true。")
 
-
 def validate_project(root: Path, stage: str) -> Result:
     result = Result()
     root = root.resolve()
@@ -889,7 +847,6 @@ def validate_project(root: Path, stage: str) -> Result:
         validate_manifest(manifest, model, config.get("episode") or {}, stage, result)
     return result
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="校验AI漫剧项目硬规则。")
     parser.add_argument("project_root", help="包含project_config.json的项目目录。")
@@ -899,7 +856,6 @@ def parse_args() -> argparse.Namespace:
         default="planning",
     )
     return parser.parse_args()
-
 
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
@@ -917,7 +873,6 @@ def main() -> int:
         f"warnings={len(result.warnings)}"
     )
     return 0 if result.ok else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

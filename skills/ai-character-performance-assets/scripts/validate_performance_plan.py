@@ -15,9 +15,9 @@ REQUIRED_CHARACTER = [
 ]
 REQUIRED_UNIT = [
     "语言单元ID", "类型", "说话人", "完整原文", "所属分镜组", "开始触发",
-    "时长依据", "语言时长秒", "默认不跨组", "连续要求", "建议片段",
+    "时长依据", "语言时长秒", "默认不跨组", "连续要求", "建议片段", "逐句表演",
 ]
-REQUIRED_SEGMENT = ["片段顺序", "原文片段", "开始方式", "开始触发", "声音状态"]
+REQUIRED_SEGMENT = ["片段顺序", "原文片段", "开始方式", "开始触发", "声音状态", "表演承接"]
 LANGUAGE_KINDS = {"对白", "内心独白", "旁白", "画外音", "系统语音"}
 TIMING_BASES = {"ACTUAL_READ", "ESTIMATED"}
 REQUIRED_BEAT = [
@@ -117,6 +117,13 @@ def validate(data):
                 errors.append(f"语言单元{unit_id}的语言时长秒必须是正数")
             if unit.get("默认不跨组") is not True:
                 errors.append(f"语言单元{unit_id}必须默认不跨组；跨组例外由上游另行批准")
+            delivery = unit.get("逐句表演")
+            if not isinstance(delivery, dict):
+                errors.append(f"语言单元{unit_id}缺少逐句表演对象")
+            else:
+                for field in ("情绪", "对象与目的", "语气", "身体配合"):
+                    if not isinstance(delivery.get(field), str) or not delivery[field].strip():
+                        errors.append(f"语言单元{unit_id}逐句表演缺少：{field}")
             segments = unit.get("建议片段")
             if not isinstance(segments, list) or not segments:
                 errors.append(f"语言单元{unit_id}的建议片段必须是非空数组")
@@ -137,6 +144,11 @@ def validate(data):
                 joined += str(segment.get("原文片段") or "")
             if joined != line:
                 errors.append(f"语言单元{unit_id}的建议片段无法逐字拼回完整原文")
+
+    expected = [(x.get("说话人"), x.get("原文")) for x in immutable_dialogue if isinstance(x, dict)] if isinstance(immutable_dialogue, list) else []
+    actual = [(x.get("说话人"), x.get("完整原文")) for x in units if isinstance(x, dict)]
+    if actual != expected:
+        errors.append("语言单元必须按顺序完整覆盖冻结台词，不能遗漏、重复或调换")
 
     beats = data.get("表演节拍")
     used_units = set()

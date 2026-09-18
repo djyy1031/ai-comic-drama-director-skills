@@ -5,9 +5,7 @@ import re
 import unittest
 from pathlib import Path
 
-
 SKILL_ROOT = Path(__file__).parents[1]
-
 
 def parse_simple_frontmatter(text: str) -> dict:
     match = re.match(r"^---\r?\n(.*?)\r?\n---", text, re.DOTALL)
@@ -34,7 +32,6 @@ def parse_simple_frontmatter(text: str) -> dict:
             result[key] = nested
             current_mapping = nested
     return result
-
 
 class SkillStructureTests(unittest.TestCase):
     def test_frontmatter_and_name(self):
@@ -170,14 +167,14 @@ class SkillStructureTests(unittest.TestCase):
         binding_position = prompt_format.index("顾平生=顾平生音色=")
         camera_position = prompt_format.index("【摄影机运动总设定】", binding_position)
         self.assertLess(binding_position, camera_position)
-        self.assertIn("资产绑定区位于全局通用负面提示词之后", prompt_format)
+        self.assertIn("资产绑定区位于全部已锁定全局控制段结束之后", prompt_format)
         self.assertIn("不添加额外标题", prompt_format)
         self.assertIn("即使当前只交付分镜提示词、不运行资产清单流程", prompt_format)
         self.assertIn("无停顿承接上一镜继续说", prompt_format)
         self.assertNotIn("【连续对白音轨总设定】", prompt_format)
 
         skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn('version: "2.13.0"', skill)
+        self.assertIn('version: "2.14.0"', skill)
         self.assertIn("动作触发", skill)
 
     def test_prompt_only_delivery_mode_is_complete(self):
@@ -199,9 +196,8 @@ class SkillStructureTests(unittest.TestCase):
             )
             self.assertIn('"target_seconds": null', config)
             self.assertIn('"normal_min_seconds": 90', config)
-            self.assertIn('"preferred_max_shot_groups": 6', config)
-            self.assertIn('"seedance_2_5_preferred_group_seconds": 30', config)
-
+            self.assertIn('"preferred_max_shot_groups": null', config)
+            self.assertNotIn('seedance_2_5_preferred_group_seconds', config)
 
 if __name__ == "__main__":
     unittest.main()

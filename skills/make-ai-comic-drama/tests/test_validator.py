@@ -8,7 +8,6 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
-
 MODULE_PATH = Path(__file__).parents[1] / "scripts" / "validate_project.py"
 SPEC = importlib.util.spec_from_file_location("ai_drama_validate_project", MODULE_PATH)
 assert SPEC and SPEC.loader
@@ -16,11 +15,9 @@ VALIDATOR = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = VALIDATOR
 SPEC.loader.exec_module(VALIDATOR)
 
-
 def write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
 
 def base_config(model: str) -> dict:
     return {
@@ -47,7 +44,6 @@ def base_config(model: str) -> dict:
             "allow_story_ui_text": True,
         },
     }
-
 
 def base_manifest(model: str, duration: float, exception: str | None = None) -> dict:
     shots = []
@@ -187,7 +183,6 @@ def base_manifest(model: str, duration: float, exception: str | None = None) -> 
         "final_episode_ready": True,
     }
 
-
 class ValidatorTests(unittest.TestCase):
     def test_rejects_missing_visual_configuration(self):
         config = base_config("seedance-2.5")
@@ -228,10 +223,9 @@ class ValidatorTests(unittest.TestCase):
         result = self.validate("seedance-2.5", base_manifest("seedance-2.5", 25))
         self.assertTrue(result.ok, result.errors)
 
-    def test_seedance_25_rejects_under_20_without_reason(self):
+    def test_seedance_25_accepts_short_complete_event_without_special_reason(self):
         result = self.validate("seedance-2.5", base_manifest("seedance-2.5", 15))
-        self.assertFalse(result.ok)
-        self.assertTrue(any("例外原因" in error for error in result.errors))
+        self.assertTrue(result.ok, result.errors)
 
     def test_seedance_25_accepts_under_20_with_reason(self):
         manifest = base_manifest("seedance-2.5", 15, "场景切换，无法与相邻事件合并")
@@ -455,7 +449,7 @@ class ValidatorTests(unittest.TestCase):
                 "duration_exception_reason": None,
                 "scene_name": "堂屋",
                 "shots": [{"shot_signature": "张三特写|正面", "primary_subject": "张三", "framing": "脸部特写"}],
-                "clean_prompt": "末镜结束。转场到下一组：改换机位。",
+                "clean_prompt": "末镜结束，保留当前姿态。",
                 "exit_transition": {
                     "to_group_id": "EP001-SG02",
                     "from_shot_signature": "张三特写|正面",
@@ -489,7 +483,7 @@ class ValidatorTests(unittest.TestCase):
                 "duration_exception_reason": None,
                 "scene_name": "堂屋",
                 "shots": [{"shot_signature": "张三特写|正面", "primary_subject": "张三", "framing": "脸部特写"}],
-                "clean_prompt": "末镜结束。转场到下一组：沿张三视线切到李四中景。",
+                "clean_prompt": "张三目光落向李四，保持当前场景。",
                 "exit_transition": {
                     "to_group_id": "EP001-SG02",
                     "from_shot_signature": "张三特写|正面",
@@ -554,7 +548,6 @@ class ValidatorTests(unittest.TestCase):
     def test_valid_final_episode(self):
         result = self.validate("seedance-2.5", base_manifest("seedance-2.5", 25), "final")
         self.assertTrue(result.ok, result.errors)
-
 
 if __name__ == "__main__":
     unittest.main()

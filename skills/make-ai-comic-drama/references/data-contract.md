@@ -60,8 +60,7 @@ PROJECT/
     "normal_min_seconds": 90,
     "final_max_seconds": 180,
     "adaptive_to_script": true,
-    "preferred_max_shot_groups": 6,
-    "seedance_2_5_preferred_group_seconds": 30
+    "preferred_max_shot_groups": null
   },
   "subtitle_policy": {
     "generate_dialogue_subtitles": false,
@@ -76,7 +75,7 @@ PROJECT/
 
 项目开始时先询问用户希望每集大概多长。`episode.target_seconds` 记录用户指定的130秒等软目标；用户没有特别要求时保持 `null`，按 `normal_min_seconds=90` 至 `final_max_seconds=180` 的正常范围由剧情决定。`adaptive_to_script=true` 表示目标不能强制凑满：内容少可靠近90秒，内容多可在180秒内延长。不得用空镜、重复反应、静止画面或无意义运镜凑时长。
 
-`preferred_max_shot_groups=6` 和 `seedance_2_5_preferred_group_seconds=30` 是 Seedance 2.5 的优先规划目标。同一场景应先尝试把连续事件合并到接近30秒，整集尽量不超过6组；场景转换、剧情密度、动作复杂度或语言容量不允许时可偏离，并在分集清单中写明原因。
+`preferred_max_shot_groups` 默认留空；只有用户明确提出组数偏好时才填写。两个模型共用事件分组规则，仅单组时长上限分别为15秒和30秒；不存在模型专属最低时长、镜数或30秒填满目标。
 
 现成模板已按模型分开：
 

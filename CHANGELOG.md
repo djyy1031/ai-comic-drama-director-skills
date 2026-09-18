@@ -1,5 +1,14 @@
 # 更新记录
 
+## 2026-09-18
+
+- 全风格通用导演逻辑、15/30秒模型上限、可选风格预设。
+- 逐句情绪、目的、语气和动作检查，以及跨镜表演继承。
+- 全焦段和摄影术语的可见画面表达、动静选择与导演决策复核。
+- 增加提示词交接、时长和全局段保真校验与回归测试。
+- 保留此前远端皮肤写实、资产核验、站位图与场景技能更新；场景技能仍为v1.3.1。
+- 发布版本：make-ai-comic-drama v2.14.0；ai-character-performance-assets v1.4.0；ai-cinematic-directing-assets v1.8.0；ai-shot-execution-continuity v1.7.0；ai-storyboard-asset-grounding v1.0.1；ai-storyboard-blocking-assets v1.1.1。
+
 ## 2026-09-15
 
 - 主导演 v2.13.0、人物表演 v1.3.0、连续性检查 v1.6.0：加入真人表情与全身局部肤色规则，保留原肤色、纹理、灯光和状态继承，原文语言不变。
