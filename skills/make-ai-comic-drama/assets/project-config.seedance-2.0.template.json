@@ -2,11 +2,14 @@
   "schema_version": "1.1",
   "project_name": "填写项目名",
   "model_profile": "seedance-2.0",
-  "render_mode": "2D",
-  "aspect_ratio": "9:16",
+  "render_mode": "填写用户指定视觉形态",
+  "aspect_ratio": "填写用户指定画幅",
   "visual_style": "填写唯一视觉风格",
   "global_prompt_profile": "填写已锁定全局提示词版本",
-  "genre": {"primary": "填写主类型", "packs": []},
+  "genre": {
+    "primary": "填写主类型",
+    "packs": []
+  },
   "director_knowledge": {
     "preferred_skill": "ai-cinematic-directing-assets",
     "allow_internal_fallback": true
@@ -16,8 +19,7 @@
     "normal_min_seconds": 90,
     "final_max_seconds": 180,
     "adaptive_to_script": true,
-    "preferred_max_shot_groups": 6,
-    "seedance_2_5_preferred_group_seconds": 30
+    "preferred_max_shot_groups": null
   },
   "subtitle_policy": {
     "generate_dialogue_subtitles": false,

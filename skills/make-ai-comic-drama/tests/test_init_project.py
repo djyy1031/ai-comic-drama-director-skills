@@ -8,14 +8,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 MODULE_PATH = Path(__file__).parents[1] / "scripts" / "init_project.py"
 SPEC = importlib.util.spec_from_file_location("ai_drama_init_project", MODULE_PATH)
 assert SPEC and SPEC.loader
 INITIALIZER = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = INITIALIZER
 SPEC.loader.exec_module(INITIALIZER)
-
 
 class InitProjectTests(unittest.TestCase):
     def test_requires_explicit_visual_configuration(self):
@@ -55,8 +53,8 @@ class InitProjectTests(unittest.TestCase):
             self.assertIsNone(config["episode"]["target_seconds"])
             self.assertEqual(config["episode"]["normal_min_seconds"], 90)
             self.assertTrue(config["episode"]["adaptive_to_script"])
-            self.assertEqual(config["episode"]["preferred_max_shot_groups"], 6)
-            self.assertEqual(config["episode"]["seedance_2_5_preferred_group_seconds"], 30)
+            self.assertIsNone(config["episode"]["preferred_max_shot_groups"])
+            self.assertNotIn("seedance_2_5_preferred_group_seconds", config["episode"])
             self.assertTrue(config["subtitle_policy"]["append_to_each_language_shot"])
             self.assertEqual(
                 config["subtitle_policy"]["required_language_shot_suffix"],
@@ -83,7 +81,6 @@ class InitProjectTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 INITIALIZER.initialize(args)
             self.assertEqual((target / "keep.txt").read_text(encoding="utf-8"), "用户文件")
-
 
 if __name__ == "__main__":
     unittest.main()

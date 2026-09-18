@@ -1,0 +1,11 @@
+{
+  "model_profile": "",
+  "render_mode": "",
+  "aspect_ratio": "",
+  "groups": [{"utterances": [{
+    "shot": 1,
+    "speaker": "",
+    "evidence": {"情绪": "", "对象与目的": "", "语气": "", "身体配合": "", "触发": "", "情绪与身体承接": ""},
+    "timing": {"offset": 0, "duration": 0, "basis": "ESTIMATED"}
+  }]}]
+}

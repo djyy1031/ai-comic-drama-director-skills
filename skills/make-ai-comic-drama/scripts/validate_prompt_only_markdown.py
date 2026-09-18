@@ -8,7 +8,6 @@ from pathlib import Path
 import re
 import sys
 
-
 GROUP_RE = re.compile(
     r"^## 分镜组([^\n]+?)\s+(\d+(?:\.\d+)?)秒\s*\n\s*```text\n(.*?)\n```",
     flags=re.M | re.S,
@@ -20,7 +19,6 @@ CONTINUE_MARKERS = ("继续说：", "继续内心独白：", "继续画外音：
 LANGUAGE_MARKERS = START_MARKERS + CONTINUE_MARKERS
 SUBTITLE_SUFFIX = "视频严禁出现台词、内心独白与系统语音字幕。"
 BANNED_TRACKS = ("【连续语言音轨总设定】", "【连续对白音轨总设定】", "音轨覆盖")
-
 
 def _asset_block_and_global(body: str) -> tuple[list[str], str] | tuple[None, None]:
     camera = "【摄影机运动总设定】"
@@ -38,7 +36,6 @@ def _asset_block_and_global(body: str) -> tuple[list[str], str] | tuple[None, No
     global_text = "\n".join(lines[: cursor + 1]).strip()
     return bindings, global_text
 
-
 def validate(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
@@ -48,8 +45,6 @@ def validate(path: Path) -> list[str]:
         return ["没有找到“## 分镜组…秒”及其独立 ```text 代码块"]
     if "项目时长规划：" not in text:
         errors.append("文档开头必须写“项目时长规划：”，说明用户软目标与本集实际安排")
-    if len(groups) > 6 and not re.search(r"分镜组数量例外说明：\s*\S+", text):
-        errors.append("分镜组超过6组时必须填写“分镜组数量例外说明：”")
 
     for phrase in BANNED_TRACKS:
         if phrase in text:
@@ -130,7 +125,6 @@ def validate(path: Path) -> list[str]:
         errors.append("整集总时长不得超过180秒")
     return errors
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="校验仅分镜组提示词 Markdown 文档")
     parser.add_argument("document", type=Path, help="待校验的 Markdown 文档")
@@ -145,7 +139,6 @@ def main() -> int:
         return 1
     print(f"PASS: {args.document.name} 的分镜组提示词结构校验通过")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -68,7 +68,7 @@ class SkillTests(unittest.TestCase):
     def test_structure_and_template(self):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: ai-shot-execution-continuity", text)
-        self.assertIn('version: "1.6.0"', text)
+        self.assertIn('version: "1.7.0"', text)
         self.assertIn("成品资产一致性", text)
         self.assertIn("不默认改成一镜到底", text)
         json.loads((ROOT / "assets/execution-report.template.json").read_text(encoding="utf-8"))

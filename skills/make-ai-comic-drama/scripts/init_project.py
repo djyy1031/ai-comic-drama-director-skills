@@ -11,7 +11,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 DIRECTORIES = [
     "00_INPUT",
     "01_SCRIPT/episodes",
@@ -33,7 +32,6 @@ DIRECTORIES = [
     "10_FINAL",
 ]
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="创建AI漫剧生产项目目录。")
     parser.add_argument("--path", required=True, help="项目父目录。")
@@ -51,20 +49,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--genre", default="", help="项目主类型。")
     return parser.parse_args()
 
-
 def validate_project_name(name: str) -> None:
     if not name.strip() or name in {".", ".."}:
         raise ValueError("项目名不能为空或使用点路径。")
     if re.search(r"[\\/:*?\"<>|]", name):
         raise ValueError("项目名包含Windows路径禁用字符。")
 
-
 def write_json(path: Path, payload: dict) -> None:
     path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-
 
 def initialize(args: argparse.Namespace) -> Path:
     validate_project_name(args.name)
@@ -107,8 +102,7 @@ def initialize(args: argparse.Namespace) -> Path:
             "normal_min_seconds": 90,
             "final_max_seconds": 180,
             "adaptive_to_script": True,
-            "preferred_max_shot_groups": 6,
-            "seedance_2_5_preferred_group_seconds": 30,
+            "preferred_max_shot_groups": None,
         },
         "subtitle_policy": {
             "generate_dialogue_subtitles": False,
@@ -154,7 +148,6 @@ def initialize(args: argparse.Namespace) -> Path:
         )
     return target
 
-
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -168,7 +161,6 @@ def main() -> int:
     print(f"CREATED: {target}")
     print(f"MODEL_PROFILE: {args.model_profile}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

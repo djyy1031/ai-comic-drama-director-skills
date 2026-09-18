@@ -29,7 +29,7 @@ def valid_package():
 class SkillTests(unittest.TestCase):
     def test_files_and_version(self):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn('version: "1.0.0"', skill)
+        self.assertIn('version: "1.0.1"', skill)
         self.assertIn("文件名匹配不等于内容正确", skill)
         self.assertTrue((ROOT / "agents" / "openai.yaml").exists())
         json.loads((ROOT / "assets" / "asset-grounding-package.template.json").read_text(encoding="utf-8"))
