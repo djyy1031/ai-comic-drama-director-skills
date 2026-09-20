@@ -50,8 +50,12 @@ class SkillTests(unittest.TestCase):
     def test_structure_and_links(self):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: ai-character-performance-assets", skill)
-        self.assertIn('version: "1.4.0"', skill)
+        self.assertIn('version: "1.5.0"', skill)
         self.assertIn("表演是人物在阻力下", skill)
+        expression_library = ROOT / "references/expression-action-library.md"
+        self.assertTrue(expression_library.exists())
+        library_text = expression_library.read_text(encoding="utf-8")
+        self.assertEqual(len(__import__("re").findall(r"^\|[A-G]\d{2}\|", library_text, flags=__import__("re").M)), 70)
         for path in ROOT.rglob("*.md"):
             text = path.read_text(encoding="utf-8")
             for link in __import__("re").findall(r"\]\(([^)#]+)", text):
