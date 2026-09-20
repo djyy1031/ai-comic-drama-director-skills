@@ -1,6 +1,7 @@
 1a49b53eb2c7093bdccf868b447522040aac5941ebf691342d74098f048186c7  ai-character-performance-assets-v1.2.0.zip
 11a867fe055798f8829a4e4b042cc74d779a7929310bf1701f68964d68405e15  ai-character-performance-assets-v1.3.0.zip
 05105706847bad9dd3663cbcd5c4f7c8fbb5aaedc177e1fb3a125bee1c8e05ef  ai-character-performance-assets-v1.4.0.zip
+c690c838f382167f380c185e53b95ffad36134fb8be9109edf917fa28150c9a5  ai-character-performance-assets-v1.5.0.zip
 87902092d183290d9ac8ce79d65718289f08794b1e9b9b3ebb727365c46f1702  ai-cinematic-directing-assets-v1.0.0.zip
 52f03f6c08a2274e6d5f9ef70054e514be038ef026acceb1feaece1a17c98294  ai-cinematic-directing-assets-v1.3.0.zip
 88079513b6b3b36e6a5e82c4c0911b9e88ca102b48d92e4b380473c58a767b9e  ai-cinematic-directing-assets-v1.5.0.zip
