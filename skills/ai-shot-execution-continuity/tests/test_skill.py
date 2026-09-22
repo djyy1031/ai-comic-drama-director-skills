@@ -6,10 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).parents[1]
 SCRIPT = ROOT / "scripts/validate_execution_report.py"
-
 
 def shot(shot_id, screen_side, segments=None):
     return {
@@ -37,7 +35,6 @@ def shot(shot_id, screen_side, segments=None):
         "状态": "PASS",
     }
 
-
 def valid_payload():
     first = shot("镜头一", "画面左侧", [{"语言单元ID": "对白一", "片段顺序": 1, "原文片段": "你为什么", "开始方式": "动作触发开始", "开始触发": "张三放下账本后", "语言时长秒": 1.1, "时长依据": "ACTUAL_READ", "口型状态": "张三现场口型同步", "连续要求": "切镜不重启"}])
     second = shot("镜头二", "画面左侧", [{"语言单元ID": "对白一", "片段顺序": 2, "原文片段": "骗我？", "开始方式": "无停顿承接", "开始触发": "切到李四反应镜头时", "语言时长秒": 1.1, "时长依据": "ACTUAL_READ", "口型状态": "张三画外连续声", "连续要求": "同一口气继续"}])
@@ -57,7 +54,6 @@ def valid_payload():
         "最终裁决": {"状态": "PASS", "问题": [], "最早返修位置": "无"},
     }
 
-
 class SkillTests(unittest.TestCase):
     def run_validator(self, payload):
         with tempfile.TemporaryDirectory() as folder:
@@ -68,7 +64,7 @@ class SkillTests(unittest.TestCase):
     def test_structure_and_template(self):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: ai-shot-execution-continuity", text)
-        self.assertIn('version: "1.7.0"', text)
+        self.assertIn('version: "1.8.0"', text)
         self.assertIn("成品资产一致性", text)
         self.assertIn("不默认改成一镜到底", text)
         json.loads((ROOT / "assets/execution-report.template.json").read_text(encoding="utf-8"))
@@ -152,7 +148,6 @@ class SkillTests(unittest.TestCase):
         }
         result = self.run_validator(data)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
 
 if __name__ == "__main__":
     unittest.main()

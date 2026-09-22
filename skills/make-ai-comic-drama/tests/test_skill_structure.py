@@ -98,7 +98,8 @@ class SkillStructureTests(unittest.TestCase):
         action = (SKILL_ROOT / "references/examples/seedance-2.5-action-group.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn("references/examples/index.md", skill)
+        self.assertIn("references/full-project-workflow.md", skill)
+        self.assertIn("examples/index.md", (SKILL_ROOT / "references/full-project-workflow.md").read_text(encoding="utf-8"))
         self.assertIn("seedance-2.5-action-group.md", index)
         self.assertIn("continuous-dialogue.md", index)
         self.assertIn("continuity-and-assets.md", index)
@@ -116,6 +117,7 @@ class SkillStructureTests(unittest.TestCase):
         template = json.loads(
             (SKILL_ROOT / "assets/动作特效资产库模板.json").read_text(encoding="utf-8")
         )
+        skill += (SKILL_ROOT / "references/full-project-workflow.md").read_text(encoding="utf-8")
         self.assertIn("关键词只用于初筛", skill)
         self.assertIn("禁止因为出现一个词就自动套用整套动作模板", skill)
         modules = library["提示词模块"]
@@ -133,6 +135,7 @@ class SkillStructureTests(unittest.TestCase):
         routing = (SKILL_ROOT / "references/director-routing.md").read_text(encoding="utf-8")
         workflow = (SKILL_ROOT / "references/workflow.md").read_text(encoding="utf-8")
         contract = (SKILL_ROOT / "references/data-contract.md").read_text(encoding="utf-8")
+        skill += (SKILL_ROOT / "references/full-project-workflow.md").read_text(encoding="utf-8")
         self.assertIn("$ai-cinematic-directing-assets", skill)
         self.assertIn("$ai-character-performance-assets", skill)
         self.assertIn("$ai-shot-execution-continuity", skill)
@@ -162,42 +165,33 @@ class SkillStructureTests(unittest.TestCase):
         self.assertIn("准确显示文字", content)
         self.assertIn("短促、可控摄影机反馈", content)
 
-    def test_3d_prompt_binding_order_and_natural_episode_duration(self):
+    def test_current_prompt_format_and_natural_episode_duration(self):
         prompt_format = (SKILL_ROOT / "references/prompt-format.md").read_text(encoding="utf-8")
-        binding_position = prompt_format.index("顾平生=顾平生音色=")
-        camera_position = prompt_format.index("【摄影机运动总设定】", binding_position)
-        self.assertLess(binding_position, camera_position)
-        self.assertIn("资产绑定区位于全部已锁定全局控制段结束之后", prompt_format)
-        self.assertIn("不添加额外标题", prompt_format)
-        self.assertIn("即使当前只交付分镜提示词、不运行资产清单流程", prompt_format)
-        self.assertIn("无停顿承接上一镜继续说", prompt_format)
-        self.assertNotIn("【连续对白音轨总设定】", prompt_format)
-
+        self.assertLess(prompt_format.index("全局约束"), prompt_format.index("资产绑定"))
+        self.assertLess(prompt_format.index("资产绑定"), prompt_format.index("每镜顺序"))
+        self.assertIn("0.5秒", prompt_format)
+        self.assertIn("独立一行", prompt_format)
+        self.assertIn("整体环境音效", prompt_format)
+        self.assertIn("身体任务并行，听者同步反应", prompt_format)
         skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn('version: "2.14.0"', skill)
-        self.assertIn("动作触发", skill)
+        self.assertIn('version: "3.0.0"', skill)
+        self.assertIn("未指定集长时按内容自然结束", skill)
 
     def test_prompt_only_delivery_mode_is_complete(self):
         skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-        delivery = (SKILL_ROOT / "references/prompt-only-storyboard-delivery.md").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("STORYBOARD_PROMPTS_ONLY", skill)
-        self.assertIn("只交付一份最终 Markdown 分镜提示词文档", skill)
-        self.assertIn("validate_prompt_only_markdown.py", skill)
-        self.assertIn("人物表演资产库 → AI影视导演语言资产库 → 镜头执行与连续性检查库", delivery)
-        self.assertIn("分镜资产接入与空间锚定库", delivery)
-        self.assertTrue((SKILL_ROOT / "references/prepared-asset-grounding.md").exists())
-        self.assertIn("不得附加资产列表", skill)
-
+        self.assertIn("七步制作", skill)
+        self.assertIn("不检索旧聊天", skill)
+        self.assertIn("确认没有资产后", skill)
+        self.assertIn("0.5秒", skill)
+        self.assertIn("validate_prompt_light.py", skill)
+        self.assertIn("references/full-project-workflow.md", skill)
+        self.assertTrue((SKILL_ROOT / "scripts/validate_prompt_light.py").is_file())
+        self.assertTrue((SKILL_ROOT / "references/approved-two-shots.md").is_file())
+        legacy = (SKILL_ROOT / "references/full-project-workflow.md").read_text(encoding="utf-8")
+        self.assertIn("STORYBOARD_PROMPTS_ONLY", legacy)
         for model in ("seedance-2.0", "seedance-2.5"):
-            config = (SKILL_ROOT / f"assets/project-config.{model}.template.json").read_text(
-                encoding="utf-8"
-            )
-            self.assertIn('"target_seconds": null', config)
-            self.assertIn('"normal_min_seconds": 90', config)
-            self.assertIn('"preferred_max_shot_groups": null', config)
-            self.assertNotIn('seedance_2_5_preferred_group_seconds', config)
+            config = json.loads((SKILL_ROOT / f"assets/project-config.{model}.template.json").read_text(encoding="utf-8"))
+            self.assertEqual(config["model_profile"], model)
 
 if __name__ == "__main__":
     unittest.main()
