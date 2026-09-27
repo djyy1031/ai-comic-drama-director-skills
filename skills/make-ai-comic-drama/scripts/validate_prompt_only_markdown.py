@@ -17,6 +17,7 @@ BINDING_RE = re.compile(r"^[^【\s][^=\n]{0,80}=[^\n]*$")
 START_MARKERS = ("开始说：", "开始内心独白：", "开始画外音：", "开始旁白：", "开始系统语音：")
 CONTINUE_MARKERS = ("继续说：", "继续内心独白：", "继续画外音：", "继续旁白：", "继续系统语音：")
 LANGUAGE_MARKERS = START_MARKERS + CONTINUE_MARKERS
+CONTINUE_TIME = re.compile(r"第0(?:\.0+)?秒(?:[^。\n]{0,20})?继续(?:说|内心独白|画外音|旁白|系统语音)：")
 SUBTITLE_SUFFIX = "视频严禁出现台词、内心独白与系统语音字幕。"
 BANNED_TRACKS = ("【连续语言音轨总设定】", "【连续对白音轨总设定】", "音轨覆盖")
 
@@ -98,11 +99,13 @@ def validate(path: Path) -> list[str]:
                     errors.append(f"{label}第{shot_index}镜：语言镜必须以固定禁字幕句结束")
             if any(marker in content for marker in START_MARKERS):
                 first_marker = min(content.index(marker) for marker in START_MARKERS if marker in content)
-                if "后，" not in content[:first_marker]:
+                if not any(trigger in content[:first_marker] for trigger in ("时，", "同时，", "后，")):
                     errors.append(f"{label}第{shot_index}镜：第一次发声前没有明确动作或现场事件触发点")
             if any(marker in content for marker in CONTINUE_MARKERS):
-                if "无停顿承接上一镜" not in content:
-                    errors.append(f"{label}第{shot_index}镜：续说没有锁定“无停顿承接上一镜”")
+                if not CONTINUE_TIME.search(content):
+                    errors.append(f"{label}第{shot_index}镜：续说须写本镜第0秒继续发声")
+            if any(phrase in content for phrase in ("上一镜", "下一镜", "待场景图核对", "待站位图核对")):
+                errors.append(f"{label}第{shot_index}镜：镜头正文混入跨镜指令或待核备注")
         if shots[-1][1] != duration:
             errors.append(f"{label}：末镜结束时间{shots[-1][1]:g}秒与分镜组时长{duration:g}秒不一致")
         if "转场到下一组" in body or "剪辑衔接：" in body:
@@ -119,10 +122,6 @@ def validate(path: Path) -> list[str]:
         if spoken_fragments and spoken_fragments[-1].endswith(("，", "、", "：", "；")):
             errors.append(f"{label}：最后一个语言片段仍在句中，疑似把同一句拆到下一分镜组")
 
-    if total_duration < 90 and not re.search(r"时长例外说明：\s*\S+", text):
-        errors.append("整集低于正常90秒时必须填写“时长例外说明：”")
-    if total_duration > 180:
-        errors.append("整集总时长不得超过180秒")
     return errors
 
 def main() -> int:

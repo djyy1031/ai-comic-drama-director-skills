@@ -96,8 +96,8 @@ def validate(document, record, locked_global, plans):
                 phrase=evidence.get(key)
                 if not isinstance(phrase,str) or not phrase.strip() or phrase not in prefix:
                     errors.append(tag+'正文发声前缺少有效证据：'+key)
-            if mode=='继续' and '无停顿承接上一镜' not in prefix:
-                errors.append(tag+'续说未明确无停顿承接')
+            if mode=='继续' and not fmt.CONTINUE_TIME.search(prefix + speech.group(0)):
+                errors.append(tag+'续说未明确本镜第0秒继续发声')
             if kind=='内心独白' and not any(x in prefix for x in ('嘴唇闭合','嘴部闭合','闭口')):
                 errors.append(tag+'内心独白缺少闭口说明')
             timing=row.get('timing',{})

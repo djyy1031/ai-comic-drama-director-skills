@@ -3,7 +3,7 @@ name: ai-storyboard-blocking-assets
 description: 在已有剧本与本地成品资产基础上，为每个分镜组制作真实场景中含对应角色的站位参考图，按空间关系判断相邻组复用，保存图片并绑定分镜提示词。适用于漫剧跨分镜组人物位置与状态连续性；不替代剧本改编、分镜导演或视频生成。
 metadata:
   short-description: 分镜组站位图制作与复用
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # 分镜组站位资产

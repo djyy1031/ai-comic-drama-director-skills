@@ -18,13 +18,13 @@ def fixture():
     pairs=[('张三','李四',['你为什么','骗我？'],'克制的愤怒','向李四质问隐瞒的原因','语气强硬','右手离开账本，目光看住李四'),('李四','张三',['我怕你','担心。'],'担忧中带着歉意','向张三解释隐瞒的原因','语气轻缓','停止擦桌，抬眼望向张三')]
     plans=[];groups=[];reviews=[]
     for i,(speaker,target,fragments,emotion,purpose,tone,body) in enumerate(pairs,1):
-        trigger=('张三放下账本后，' if i==1 else '李四停止擦桌后，')
+        trigger=('张三手指触到账本时，' if i==1 else '李四抹布停在桌面时，')
         carry=f'继承{emotion}和解释意图' if i==2 else f'继承{emotion}和质问意图'
-        carry+='，保持上一镜的注视和手部状态'
+        carry+='，目光仍看着对方，手部姿态保持稳定'
         prefix=f'{speaker}带着{emotion}，{purpose}，{tone}，{body}；{trigger}{speaker}'
-        second=f'{speaker}{carry}，{purpose}，{tone}，{body}，无停顿承接上一镜'
-        shot1=f'50mm平视双人中景，摄影机在桌前，取两人腰部以上和桌面，固定；{prefix}开始说：“{fragments[0]}”。{target}听话时嘴唇闭合，呼吸轻缓。'
-        shot2=f'50mm说话者胸口以上，摄影机原地保持固定，脸部与肩颈清楚；{second}继续说：“{fragments[1]}”。{target}留在原位听完。'
+        second=f'{speaker}{carry}，{purpose}，{tone}，{body}，第0秒'
+        shot1=f'摄影机镜头焦距50毫米，{speaker}与{target}双人腰上中景，摄影机在桌前固定拍摄，取两人腰部以上和桌面；{prefix}第0.1秒开始说：“{fragments[0]}”。{target}听话时嘴唇闭合，呼吸轻缓。'
+        shot2=f'摄影机镜头焦距50毫米，{speaker}胸上中近景，摄影机在桌前固定拍摄，脸部与肩颈清楚；{second}继续说：“{fragments[1]}”。{target}在画外。'
         header='一' if i==1 else '二'
         group=f'## 分镜组{header} 测试事件{i} 8秒\n```text\n{global_text}\n\n张三=张三音色=\n李四=李四音色=\n古装柜台日景=\n账本=\n抹布=\n【摄影机运动总设定】\n摄影机在柜台南侧，两个镜头固定，由人物表演推进。\n【场景与光影】\n古装柜台日景，窗光来自桌面右侧，背景可辨。\n【起始站位】\n张三在桌左侧面向右侧李四；账本在张三手边，抹布在李四右手。\n【语言连续性总锁】\n本组一句话跨镜不断声，情绪、意图和身体状态继承。\n【0—4秒】：{shot1}视频严禁出现台词、内心独白与系统语音字幕。\n【4—8秒】：{shot2}视频严禁出现台词、内心独白与系统语音字幕。\n```\n'
         if i==1:group+='剪辑衔接：张三问完保持注视，下一组从双人中景接李四停止擦桌后解释，账本与抹布位置继承。\n'
@@ -75,7 +75,7 @@ class HandoffTests(unittest.TestCase):
         self.assertTrue(self.check(d,r,g,p))
     def test_same_shot_speech_overlap(self):
         d,r,g,p=fixture()
-        d=d.replace('\n【4—8秒】：50mm说话者胸口以上','50mm说话者胸口以上',1)
+        d=d.replace('\n【4—8秒】：摄影机镜头焦距50毫米，张三胸上中近景','摄影机镜头焦距50毫米，张三胸上中近景',1)
         r['groups'][0]['utterances'][1]['shot']=1
         r['groups'][0]['utterances'][1]['timing']['offset']=2
         self.assertTrue(any('同镜语言重叠' in x for x in self.check(d,r,g,p)))

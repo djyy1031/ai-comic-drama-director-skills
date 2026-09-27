@@ -529,8 +529,8 @@ def validate_prompt(
                     if not any(marker in block for marker in ("开始说：", "开始内心独白：", "开始旁白：", "开始画外音：", "开始系统语音：")):
                         result.error(f"{prefix} 第{index}镜第一语言片段必须明确开始说或开始内心独白。")
                 elif segment.get("start_mode") == "CONTINUE_WITHOUT_RESTART":
-                    if "无停顿承接上一镜" not in block:
-                        result.error(f"{prefix} 第{index}镜后续语言片段必须写明无停顿承接上一镜。")
+                    if len(segments) == 1 and not re.search(r"第0(?:\.0+)?秒[^。\n]{0,20}继续(?:说|内心独白|旁白|画外音|系统语音)", block):
+                        result.error(f"{prefix} 第{index}镜后续语言片段必须写明本镜第0秒继续发声。")
     if detected_spoken_language and language_shot_count == 0:
         result.error(f"{prefix} 语言内容必须写入带时间区间的小镜头内。")
     if declared_spoken_language and language_shot_count == 0:

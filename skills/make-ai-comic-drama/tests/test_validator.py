@@ -83,7 +83,7 @@ def base_manifest(model: str, duration: float, exception: str | None = None) -> 
                 "segment_index": 2,
                 "text": "你过来。",
                 "start_mode": "CONTINUE_WITHOUT_RESTART",
-                "start_trigger": "切到张三反应镜头时",
+                "start_trigger": "张三抬眼时",
                 "spoken_duration_seconds": 1.6,
                 "timing_basis": "ACTUAL_READ",
                 "mouth_state": "李明画外连续声",
@@ -105,7 +105,7 @@ def base_manifest(model: str, duration: float, exception: str | None = None) -> 
         if index == 1:
             language = "李明抬眼看向张三后，李明（平静）朝向张三开始说：“张三，”"
         elif index == 2:
-            language = "切到张三反应镜头时，李明声音转为画外连续声，无停顿承接上一镜继续说：“你过来。”"
+            language = "张三抬眼时，李明声音为画外连续声，第0秒继续说：“你过来。”"
         else:
             language = "李明与张三保持当前空间关系，画面继续推进。"
         suffix = " 视频严禁出现台词、内心独白与系统语音字幕。" if segments else ""
@@ -383,7 +383,7 @@ class ValidatorTests(unittest.TestCase):
             "李明=李明音色=\n张三=\n金融一班教室=\n"
             "【摄影机运动总设定】\n对话轴线稳定。\n"
             "【0-15秒】：中景承载整段对话。李明抬眼看向张三后，李明开始说：“张三，”"
-            "切到张三反应镜头时，李明无停顿承接上一镜继续说：“你过来。” "
+            "张三抬眼时，李明继续说：“你过来。” "
             "视频严禁出现台词、内心独白与系统语音字幕。"
         )
         result = self.validate("seedance-2.0", manifest)
@@ -416,7 +416,7 @@ class ValidatorTests(unittest.TestCase):
             "【摄影机运动总设定】\n对话轴线稳定。\n"
             "【0-15秒】：用户明确批准的一镜到底，人物持续走位且摄影机持续变焦。"
             "李明抬眼看向张三后，李明开始说：“张三，”"
-            "切到张三反应镜头时，李明无停顿承接上一镜继续说：“你过来。” "
+            "张三抬眼时，李明继续说：“你过来。” "
             "视频严禁出现台词、内心独白与系统语音字幕。"
         )
         result = self.validate("seedance-2.0", manifest)
