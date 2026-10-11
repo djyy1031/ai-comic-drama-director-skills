@@ -68,13 +68,19 @@ class SkillTests(unittest.TestCase):
     def test_structure_and_template(self):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: ai-shot-execution-continuity", text)
-        self.assertIn('version: "1.8.1"', text)
+        self.assertIn('version: "1.8.2"', text)
         self.assertIn("成品资产一致性", text)
         self.assertIn("不默认改成一镜到底", text)
         json.loads((ROOT / "assets/execution-report.template.json").read_text(encoding="utf-8"))
 
     def test_valid_report(self):
         result = self.run_validator(valid_payload())
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_eight_second_performance_has_no_default_six_second_limit(self):
+        data = valid_payload()
+        data["单镜检查"][0]["时长秒"] = 8
+        result = self.run_validator(data)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_rejects_stale_entity(self):
@@ -84,10 +90,11 @@ class SkillTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("白名单外实体", result.stdout)
 
-    def test_rejects_unapproved_long_dialogue_shot(self):
+    def test_rejects_violation_of_explicit_shot_limit(self):
         data = valid_payload()
         data["单镜检查"] = [copy.deepcopy(data["单镜检查"][0])]
         data["单镜检查"][0]["时长秒"] = 24
+        data["单镜时长上限秒"] = 6
         data["切镜连续性"] = []
         result = self.run_validator(data)
         self.assertEqual(result.returncode, 1)

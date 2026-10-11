@@ -90,10 +90,6 @@ def validate(path: Path) -> list[str]:
                 errors.append(f"{label}第{shot_index}镜：结束时间必须大于开始时间")
             if shot_index > 1 and start != shots[shot_index - 2][1]:
                 errors.append(f"{label}第{shot_index}镜：与上一镜时间不连续")
-            if end - start > 6.0 and not (
-                "long_take_approved=true" in content and "long_take_reason=" in content
-            ):
-                errors.append(f"{label}第{shot_index}镜：普通镜头超过6秒且没有明确长镜批准与理由")
             if any(marker in content for marker in LANGUAGE_MARKERS):
                 if not content.endswith(SUBTITLE_SUFFIX):
                     errors.append(f"{label}第{shot_index}镜：语言镜必须以固定禁字幕句结束")

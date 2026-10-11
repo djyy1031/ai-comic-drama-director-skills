@@ -180,7 +180,7 @@ class SkillStructureTests(unittest.TestCase):
         self.assertNotIn("【连续对白音轨总设定】", prompt_format)
 
         skill = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn('version: "3.2.5"', skill)
+        self.assertIn('version: "3.3.1"', skill)
         self.assertIn("第X集｜总时长X秒｜共X个分镜组", skill)
         self.assertIn("表演资产必须转写进最终逐镜画面", skill)
         self.assertIn("OS镜头优先呈现被思考的场景、人物或道具", skill)

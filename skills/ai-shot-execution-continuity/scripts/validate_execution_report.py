@@ -23,7 +23,7 @@ REQUIRED_CUT = ["前镜", "后镜", "人物继承", "道具继承", "环境继�
 REQUIRED_UNIT = ["语言单元ID", "类型", "说话人", "完整原文", "所属分镜组", "默认不跨组", "连续要求"]
 REQUIRED_SEGMENT = ["语言单元ID", "片段顺序", "原文片段", "开始方式", "开始触发", "语言时长秒", "时长依据", "口型状态", "连续要求"]
 TIMING_BASES = {"ACTUAL_READ", "ESTIMATED"}
-MAX_NORMAL_SHOT_SECONDS = 6.0
+MAX_NORMAL_SHOT_SECONDS = None  # 无默认单镜上限；读取项目明确限制。
 
 
 def nonempty(value):
@@ -36,6 +36,10 @@ def is_closeup(value):
 
 def validate(data):
     errors = []
+    shot_limit = data.get("单镜时长上限秒")
+    if shot_limit is not None and (isinstance(shot_limit, bool) or not isinstance(shot_limit, (int, float)) or shot_limit <= 0):
+        errors.append("单镜时长上限秒必须是正数或省略")
+        shot_limit = None
     for key in REQUIRED_TOP:
         if key not in data:
             errors.append(f"缺少顶层字段：{key}")
@@ -135,9 +139,9 @@ def validate(data):
                     errors.append(f"镜头{shot_id}的语言片段时长超过镜头可用时长")
                 if segment.get("时长依据") not in TIMING_BASES:
                     errors.append(f"镜头{shot_id}第{seg_index}个语言片段时长依据无效")
-            if duration > MAX_NORMAL_SHOT_SECONDS:
+            if shot_limit is not None and duration > shot_limit:
                 if shot.get("长镜头明确批准") is not True or not nonempty(shot.get("长镜头理由")):
-                    errors.append(f"镜头{shot_id}超过6秒，必须由上游明确批准长镜头并填写理由")
+                    errors.append(f"镜头{shot_id}超过{shot_limit:g}秒，必须由上游明确批准长镜头并填写理由")
 
             entities = shot.get("活动实体")
             if not isinstance(entities, list) or not entities:
@@ -207,10 +211,10 @@ def validate(data):
             if shot.get("状态") == "PASS" and issues:
                 errors.append(f"镜头{shot_id}标记PASS时问题必须为空")
 
-    if any_dialogue and total_duration > MAX_NORMAL_SHOT_SECONDS and len(shots) == 1:
+    if shot_limit is not None and any_dialogue and total_duration > shot_limit and len(shots) == 1:
         shot = shots[0] if shots and isinstance(shots[0], dict) else {}
         if not (shot.get("长镜头明确批准") is True and nonempty(shot.get("长镜头理由"))):
-            errors.append("含连续对白且总时长超过6秒时不能只有一个镜头")
+            errors.append(f"含连续对白且超过项目单镜上限{shot_limit:g}秒时不能只有一个镜头")
 
     collected = {unit_id: [] for unit_id in unit_by_id}
     for shot in shots:

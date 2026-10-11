@@ -10,7 +10,7 @@ REQUIRED_SHOT = ["顺序", "类型", "建议时长秒", "语言片段", "主视�
 REQUIRED_UNIT = ["语言单元ID", "类型", "说话人", "完整原文", "所属分镜组", "默认不跨组", "连续要求"]
 REQUIRED_SEGMENT = ["语言单元ID", "片段顺序", "原文片段", "开始方式", "开始触发", "语言时长秒", "时长依据", "口型状态", "连续要求"]
 TIMING_BASES = {"ACTUAL_READ", "ESTIMATED"}
-DEFAULT_MAX_SHOT_SECONDS = 6.0
+DEFAULT_MAX_SHOT_SECONDS = None  # 无默认单镜上限；读取项目明确限制。
 
 
 def nonempty(value):
@@ -23,6 +23,10 @@ def is_closeup(value):
 
 def validate(data):
     errors = []
+    shot_limit = data.get("单镜时长上限秒")
+    if shot_limit is not None and (isinstance(shot_limit, bool) or not isinstance(shot_limit, (int, float)) or shot_limit <= 0):
+        errors.append("单镜时长上限秒必须是正数或省略")
+        shot_limit = None
     for key in REQUIRED_TOP:
         if key not in data:
             errors.append(f"缺少顶层字段：{key}")
@@ -107,9 +111,9 @@ def validate(data):
             duration = shot.get("建议时长秒")
             if not isinstance(duration, (int, float)) or isinstance(duration, bool) or duration <= 0:
                 errors.append(f"第{index}个镜头的建议时长秒必须是正数")
-            elif duration > DEFAULT_MAX_SHOT_SECONDS:
+            elif shot_limit is not None and duration > shot_limit:
                 if shot.get("长镜头明确批准") is not True or not str(shot.get("长镜头理由", "")).strip():
-                    errors.append(f"第{index}个镜头超过6秒，必须明确批准长镜头并填写理由")
+                    errors.append(f"第{index}个镜头超过{shot_limit:g}秒，必须明确批准长镜头并填写理由")
             segments = shot.get("语言片段")
             if not isinstance(segments, list):
                 errors.append(f"第{index}个镜头的语言片段必须是数组")

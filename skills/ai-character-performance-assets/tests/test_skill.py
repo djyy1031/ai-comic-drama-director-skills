@@ -50,7 +50,7 @@ class SkillTests(unittest.TestCase):
     def test_structure_and_links(self):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: ai-character-performance-assets", skill)
-        self.assertIn('version: "1.6.1"', skill)
+        self.assertIn('version: "1.6.2"', skill)
         self.assertIn("表演是人物在阻力下", skill)
         for path in ROOT.rglob("*.md"):
             text = path.read_text(encoding="utf-8")

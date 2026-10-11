@@ -42,7 +42,21 @@ class ValidatorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("镜头功能为空", result.stdout)
 
-    def test_unapproved_long_dialogue_shot_fails(self):
+    def test_continuous_eight_second_performance_has_no_default_six_second_limit(self):
+        data = json.loads(TEMPLATE.read_text(encoding="utf-8"))
+        data["场景诊断"]["主场景类型"] = "对话与关系"
+        data["场景诊断"]["主要剧情功能"] = "改变关系"
+        data["场景诊断"]["情绪轨迹"] = "克制到坚定"
+        data["镜头设计"][0]["镜头功能"] = "建立关系"
+        data["镜头设计"][0]["存在理由"] = "完整保留递物、观察与接物的关系变化"
+        data["镜头设计"][0]["建议时长秒"] = 8
+        for key in ["人物表演方案", "镜头执行与连续性检查"]:
+            data[key]["状态"] = "PASS"
+            data[key]["摘要"] = "本测试已提供相应检查结果"
+        result = self.run_validator(data)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_explicit_shot_limit_requires_approval(self):
         data = json.loads(TEMPLATE.read_text(encoding="utf-8"))
         data["场景诊断"]["主场景类型"] = "对话与关系"
         data["场景诊断"]["主要剧情功能"] = "改变关系"
@@ -51,6 +65,7 @@ class ValidatorTests(unittest.TestCase):
         shot["镜头功能"] = "推进指控"
         shot["存在理由"] = "呈现关系变化"
         shot["建议时长秒"] = 24
+        data["单镜时长上限秒"] = 6
         result = self.run_validator(data)
         self.assertEqual(result.returncode, 1)
         self.assertIn("超过6秒", result.stdout)

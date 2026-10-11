@@ -7,18 +7,18 @@ from pathlib import Path
 
 SHOT = re.compile(r'^\s*(?:\*\*)?【(\d+(?:\.\d+)?)\s*[—–-]\s*(\d+(?:\.\d+)?)秒】(?:\*\*)?[：:]?', re.M)
 SUBTITLE = '视频严禁出现台词、内心独白与系统语音字幕。'
-ONSET = re.compile(r'(?:第|后)\s*(\d+(?:\.\d+)?)\s*秒[^。\n：:]{0,12}(?:开口|开始说|开始对[^。\n：:]{1,12}说|开始内心独白|开始画外音|开始旁白|开始系统语音)')
-EPISODE = re.compile(r'第(\d+)集\s*[｜|]\s*总时长\s*(\d+(?:\.\d+)?)秒\s*[｜|]\s*共\s*(\d+)个分镜组\s*[｜|]\s*各组时长[：:]\s*([^\n]+)')
+ONSET = re.compile(r'(?:第|后)\s*(\d+(?:\.\d+)?)\s*秒[^。\n：:“”]{0,80}?(?:开口|说|问|回答|答道|喊|内心独白|画外音|旁白|系统语音)')
+EPISODE = re.compile(r'第(\d+)集\s*[｜|]\s*(?:总|规划)时长\s*(\d+(?:\.\d+)?)秒\s*[｜|]\s*共\s*(\d+)个分镜组\s*[｜|]\s*各组时长[：:]\s*([^\n]+)')
 GROUP = re.compile(r'(?m)^#{1,4}\s*分镜组[^\n]*?(\d+(?:\.\d+)?)秒[^\n]*$')
 FENCE = re.compile(r'```text\s*\n(.*?)\n```', re.S)
 SECTIONS = ('【摄影机运动总设定】', '【场景与光影】', '【起始站位】', '【语言连续性总锁】')
 ASSET = re.compile(r'^[^【\s#][^=\n]{0,80}=[^\n]*$')
 FRAMING = re.compile(r'单人|双人|多人|中近景|中全景|中景|近景|特写|全景')
 LENS_PREFIX = re.compile(r'^\s*摄影机镜头焦距\s*\d+(?:\.\d+)?\s*(?:mm|毫米)\s*[，,]?\s*', re.I)
-CONTINUE_ONSET = re.compile(r'第\s*(\d+(?:\.\d+)?)\s*秒[^。\n：:]{0,12}(?:继续说|继续内心独白|继续画外音|继续旁白|继续系统语音)')
+CONTINUE_ONSET = re.compile(r'第\s*(\d+(?:\.\d+)?)\s*秒[^。\n：:“”]{0,30}?继续[^。\n：:“”]{0,30}?(?:说|问|回答|内心独白|画外音|旁白|系统语音)')
 PROMPT_RESIDUE = re.compile(r'\*\*|&#(?:x[0-9a-fA-F]+|\d+);|上一镜|下一镜|待场景图核对|待站位图核对|不能重新抬手')
 FACE_DETAIL = re.compile(r'面部|脸部|面容|眼部|眼睛|眼神|眉眼|唇部|嘴唇|鼻尖')
-CAMERA_CHOICE = re.compile(r'固定|静止|前移|后退|横移|摇摄|推近|拉远|跟拍|跟随|升降|弧线|环绕|手持|变焦|转焦')
+CAMERA_CHOICE = re.compile(r'固定|静止|前移|后退|横移|侧移|转动|摇摄|推近|靠近|拉远|跟拍|跟随|升降|弧线|环绕|手持|变焦|转焦')
 
 def validate_named_framing(camera, names, tag):
     first_line=next((line.strip() for line in camera.splitlines() if line.strip()), '')
@@ -128,7 +128,7 @@ def validate(text, names, limit=None, shots_only=False, exceptions=None, require
         expected=end
         body=text[m.end():shots[i+1].start() if i+1<len(shots) else len(text)].strip()
         # Group tail metadata is not part of the final shot.
-        body=re.split(r'(?m)^\s*(?:\*\*)?(?:整体环境音效|剪辑衔接|## 分镜组)',body)[0]
+        body=re.split(r'(?m)^\s*(?:\*\*)?(?:整体环境音效|剪辑衔接|## 分镜组|```)',body)[0]
         if PROMPT_RESIDUE.search(body):
             errors.append(tag+'混入格式残留、待核备注或跨镜剪辑指令')
         body=body.replace('**','').strip().strip('`').strip()
@@ -148,7 +148,7 @@ def validate(text, names, limit=None, shots_only=False, exceptions=None, require
         elif not re.search(r'(?m)^环境与动作音效：',body): errors.append(tag+'环境与动作音效须独立成行')
         if not re.search(r'(?:低于|不高于|不盖|不遮|退至|让位|无声|静默|无对白|没有人声|无人说话)',body):
             errors.append(tag+'缺少声音主次或静默安排')
-        has_voice=bool(re.search(r'[：:]\s*[“「]',body))
+        has_voice=bool(re.search(r'(?:说|问|回答|答道|喊|内心独白|画外音|旁白|系统语音)[^：:\n“”]{0,60}[：:]\s*[“「]',body))
         if has_voice:
             if not body.endswith('\n'+SUBTITLE): errors.append(tag+'语言镜末尾须独立一行禁字幕句')
             onset=ONSET.search(body)
@@ -176,6 +176,31 @@ def validate(text, names, limit=None, shots_only=False, exceptions=None, require
             errors.append('缺少无背景音乐要求')
     return errors
 
+
+def review_quality(text, names):
+    """Conservative text checks, not a semantic director or video evaluator."""
+    errors=[]
+    shots=list(SHOT.finditer(text))
+    for index, shot in enumerate(shots):
+        body=text[shot.end():shots[index+1].start() if index+1<len(shots) else len(text)]
+        body=re.split(r'(?m)^\s*(?:整体环境音效|## 分镜组|```)',body)[0].strip()
+        camera=body.split('\n\n')[0]
+        tag=f'镜头{index+1}'
+        # Ignore quoted dialogue: a character may legitimately say emotion words.
+        stage=re.sub(r'[“「].*?[”」]', '', body)
+        if re.search(r'以[^。\n“”]{1,45}(?:的)?情绪',stage):
+            errors.append(tag+'使用“以某某情绪”套话；转为剧情触发的可见表情和身体变化')
+        if re.search(r'(?:内心崩溃|气场强大|完全把[^。\n]{0,30}误认|心理距离变化|策略转折|情绪递进)',stage):
+            errors.append(tag+'含抽象心理或导演分析；改写为本镜具体画面')
+        if not re.search(r'摄影机(?:在|位于|从|设在)',camera):
+            errors.append(tag+'摄影机缺少具体起点；写相对人物或地标的位置')
+        moving=bool(re.search(r'前移|后退|横移|侧移|转动|摇摄|推近|拉远|跟拍|跟随|升降|环绕|靠近',camera))
+        if moving and not re.search(r'停|落在|最终|结束时|直到|直至|收住',camera):
+            errors.append(tag+'运动没有明确停止构图；写最后拍到谁和哪些部位')
+        if re.search(r'(?:增强|营造|增加|制造)(?:紧张感|压迫感|电影感|高级感)',camera):
+            errors.append(tag+'用气氛评价代替摄影画面；写运动中可见的信息或构图变化')
+    return errors
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('document',type=Path)
@@ -184,12 +209,15 @@ def main():
     p.add_argument('--shots-only',action='store_true')
     p.add_argument('--require-groups',action='store_true',help='整场审阅草稿必须逐组标时长、从0计时')
     p.add_argument('--exceptions',type=Path)
+    p.add_argument('--review-quality',action='store_true',help='拦截情绪套话、抽象心理和不完整运镜；不代替导演复核')
     a=p.parse_args()
     try:
         ex=json.loads(a.exceptions.read_text(encoding='utf-8-sig')) if a.exceptions else {}
         if not isinstance(ex,dict): raise ValueError('例外须为镜头序号到原文证据的对象')
         if a.max_group_seconds is not None and a.max_group_seconds<=0: raise ValueError('单组上限必须大于零')
-        errors=validate(a.document.read_text(encoding='utf-8-sig'),a.names,a.max_group_seconds,a.shots_only,ex,a.require_groups)
+        document=a.document.read_text(encoding='utf-8-sig')
+        errors=validate(document,a.names,a.max_group_seconds,a.shots_only,ex,a.require_groups)
+        if a.review_quality: errors.extend(review_quality(document,a.names))
     except (OSError,ValueError,TypeError) as exc: errors=[str(exc)]
     for error in errors: print('ERROR: '+error)
     if not errors: print('PASS_FORMAT_ONLY: 可识别文字与时间格式通过；未验证资产图、站位、表演节奏、音频或视频。')
